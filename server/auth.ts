@@ -5,9 +5,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser, users } from "@shared/schema";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { User as SelectUser } from "@shared/schema";
 
 declare global {
   namespace Express {
@@ -24,22 +22,10 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  try {
-    console.log(`Comparing supplied password with stored hash: ${stored.substring(0, 20)}...`);
-    const [hashed, salt] = stored.split(".");
-    if (!hashed || !salt) {
-      console.error("Invalid stored password format - missing hash or salt");
-      return false;
-    }
-    const hashedBuf = Buffer.from(hashed, "hex");
-    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-    const result = timingSafeEqual(hashedBuf, suppliedBuf);
-    console.log(`Password comparison result: ${result}`);
-    return result;
-  } catch (error) {
-    console.error("Error comparing passwords:", error);
-    return false;
-  }
+  const [hashed, salt] = stored.split(".");
+  const hashedBuf = Buffer.from(hashed, "hex");
+  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
 export function setupAuth(app: Express) {
@@ -64,26 +50,13 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        console.log(`Login attempt for username: ${username}`);
         const user = await storage.getUserByUsername(username);
-        
-        if (!user) {
-          console.log(`User not found: ${username}`);
-          return done(null, false, { message: "Invalid username or password" });
-        }
-        
-        console.log(`User found: ${username}, id: ${user.id}`);
-        const isPasswordValid = await comparePasswords(password, user.password);
-        
-        if (!isPasswordValid) {
-          console.log(`Invalid password for user: ${username}`);
+        if (!user || !(await comparePasswords(password, user.password))) {
           return done(null, false, { message: "Invalid username or password" });
         } else {
-          console.log(`Successful login for user: ${username}`);
           return done(null, user);
         }
       } catch (error) {
-        console.error(`Error during authentication:`, error);
         return done(error);
       }
     }),
@@ -175,33 +148,5 @@ export function setupAuth(app: Express) {
     // Return user without password
     const { password, ...userWithoutPassword } = req.user;
     res.json(userWithoutPassword);
-  });
-  
-  // Temporary reset password endpoint for testing
-  app.post("/api/reset-password", async (req, res, next) => {
-    try {
-      const { username, newPassword } = req.body;
-      
-      if (!username || !newPassword) {
-        return res.status(400).json({ message: "Username and new password are required" });
-      }
-      
-      const user = await storage.getUserByUsername(username);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Update user with new hashed password directly in database
-      const hashedPassword = await hashPassword(newPassword);
-      await db.update(users)
-        .set({ password: hashedPassword })
-        .where(eq(users.id, user.id));
-      
-      console.log(`Password reset for user: ${username}`);
-      
-      res.status(200).json({ message: "Password reset successfully" });
-    } catch (error) {
-      next(error);
-    }
   });
 }
