@@ -9,38 +9,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { getCategoryIcon, getCategoryColor, hourOptions } from "@/lib/utils";
-import Sidebar from "@/components/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Trash2, Save } from "lucide-react";
 
 export default function SettingsPage() {
   return (
-    <div className="min-h-screen flex">
-      <Sidebar />
-      <main className="flex-1 overflow-auto p-4 md:p-6">
-        <h1 className="text-2xl font-bold mb-6">Settings</h1>
+    <div className="overflow-auto p-4 md:p-6">
+      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      
+      <Tabs defaultValue="categories">
+        <TabsList className="mb-6">
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        </TabsList>
         
-        <Tabs defaultValue="categories">
-          <TabsList className="mb-6">
-            <TabsTrigger value="categories">Categories</TabsTrigger>
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="categories">
-            <CategorySettings />
-          </TabsContent>
-          
-          <TabsContent value="account">
-            <AccountSettings />
-          </TabsContent>
-          
-          <TabsContent value="notifications">
-            <NotificationSettings />
-          </TabsContent>
-        </Tabs>
-      </main>
+        <TabsContent value="categories">
+          <CategorySettings />
+        </TabsContent>
+        
+        <TabsContent value="account">
+          <AccountSettings />
+        </TabsContent>
+        
+        <TabsContent value="notifications">
+          <NotificationSettings />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

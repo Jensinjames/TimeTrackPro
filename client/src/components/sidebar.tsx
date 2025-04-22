@@ -1,127 +1,169 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useState } from "react";
+import { useLocation, Link } from "wouter";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import { 
-  BarChart, 
-  Calendar, 
+  LayoutDashboard, 
+  History, 
   Settings, 
   Menu, 
-  X, 
-  LogOut 
+  ChevronLeft,
+  LogOut
 } from "lucide-react";
 
 export default function Sidebar() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
+  const [location] = useLocation();
   const isMobile = useIsMobile();
+  const [isCollapsed, setIsCollapsed] = useState(isMobile);
   
-  const navigationItems = [
-    { name: "Dashboard", path: "/", icon: <BarChart className="w-5 h-5" /> },
-    { name: "History", path: "/history", icon: <Calendar className="w-5 h-5" /> },
-    { name: "Settings", path: "/settings", icon: <Settings className="w-5 h-5" /> },
-  ];
+  const handleToggle = () => {
+    setIsCollapsed(!isCollapsed);
+  };
   
   const handleLogout = () => {
     logoutMutation.mutate();
   };
   
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen);
-  };
-  
-  const closeSidebar = () => {
-    if (isMobile && isOpen) {
-      setIsOpen(false);
+  // Navigation links
+  const navItems = [
+    { 
+      href: "/", 
+      label: "Dashboard", 
+      icon: <LayoutDashboard size={20} />
+    },
+    { 
+      href: "/history", 
+      label: "History", 
+      icon: <History size={20} />
+    },
+    { 
+      href: "/settings", 
+      label: "Settings", 
+      icon: <Settings size={20} />
     }
-  };
+  ];
   
   return (
     <>
-      {/* Mobile Hamburger Menu */}
+      {/* Mobile header */}
       {isMobile && (
-        <button 
-          onClick={toggleSidebar}
-          className="fixed top-4 left-4 z-50 bg-white p-2 rounded-md shadow-md"
-        >
-          {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="h-16 md:hidden fixed top-0 left-0 right-0 bg-background z-30 border-b flex items-center justify-between px-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleToggle}
+          >
+            <Menu size={24} />
+          </Button>
+          
+          <h1 className="text-lg font-bold">Time Tracker</h1>
+          
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={`https://avatar.vercel.sh/${user?.username || 'user'}.png`} />
+            <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
+          </Avatar>
+        </div>
       )}
       
       {/* Sidebar */}
-      <div 
-        className={`
-          fixed md:static h-full bg-white shadow-lg z-40 transition-all duration-300
-          ${isMobile ? (isOpen ? "left-0" : "-left-64") : "left-0"}
-          w-64
-        `}
-      >
-        <div className="flex flex-col h-full p-4">
-          {/* App Name and Logo */}
-          <div className="flex items-center mb-8 mt-2">
-            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-white mr-2">
-              <i className="fa-solid fa-clock text-sm"></i>
+      <aside className={`
+        fixed md:sticky top-0 md:top-0 ${isMobile ? "z-40 left-0 h-full w-64 transition-transform duration-300 ease-in-out transform shadow-lg" : "h-screen w-64 md:w-auto"}
+        ${isCollapsed ? "-translate-x-full md:translate-x-0 md:w-16" : "translate-x-0"}
+        bg-background border-r
+      `}>
+        <div className="flex flex-col h-full">
+          {/* Desktop header */}
+          {!isMobile && (
+            <div className="h-16 flex items-center justify-between p-4 border-b">
+              {!isCollapsed && <h1 className="text-lg font-bold">Time Tracker</h1>}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleToggle}
+                className={isCollapsed ? "mx-auto" : ""}
+              >
+                {isCollapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
+              </Button>
             </div>
-            <h1 className="font-bold text-xl">Timetrack</h1>
+          )}
+          
+          {/* Mobile header (only shows when menu is open) */}
+          {isMobile && (
+            <div className="h-16 flex items-center justify-between p-4 border-b">
+              <h1 className="text-lg font-bold">Time Tracker</h1>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleToggle}
+              >
+                <ChevronLeft size={20} />
+              </Button>
+            </div>
+          )}
+          
+          {/* User profile */}
+          <div className={`p-4 flex ${isCollapsed ? "justify-center" : "items-center space-x-3"}`}>
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={`https://avatar.vercel.sh/${user?.username || 'user'}.png`} />
+              <AvatarFallback>{user?.name?.[0] || user?.username?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            
+            {!isCollapsed && (
+              <div className="overflow-hidden">
+                <p className="font-medium truncate">{user?.name || user?.username}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+              </div>
+            )}
           </div>
           
-          {/* Navigation Links */}
-          <nav className="flex-1">
+          <Separator className="my-2" />
+          
+          {/* Navigation */}
+          <nav className="flex-1 p-2">
             <ul className="space-y-1">
-              {navigationItems.map((item) => (
-                <li key={item.path}>
-                  <Link href={item.path}>
-                    <a 
-                      onClick={closeSidebar}
-                      className={`
-                        flex items-center px-3 py-2 rounded-md transition-colors
-                        ${location === item.path 
-                          ? "bg-primary text-white" 
-                          : "text-gray-700 hover:bg-gray-100"}
-                      `}
-                    >
-                      {item.icon}
-                      <span className="ml-3">{item.name}</span>
-                    </a>
+              {navItems.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href}>
+                    <div className={`
+                      flex items-center px-2 py-2 rounded-md cursor-pointer
+                      ${location === item.href ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-gray-600 hover:text-foreground"}
+                    `}>
+                      <span className={isCollapsed ? "mx-auto" : "mr-3"}>{item.icon}</span>
+                      {!isCollapsed && <span>{item.label}</span>}
+                    </div>
                   </Link>
                 </li>
               ))}
             </ul>
           </nav>
           
-          {/* User and Logout */}
-          <div className="pt-4 border-t">
-            <div className="flex items-center mb-4">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-primary text-white">{user?.name?.charAt(0) || user?.username?.charAt(0) || "U"}</AvatarFallback>
-              </Avatar>
-              <div className="ml-3">
-                <p className="text-sm font-medium">{user?.name || user?.username}</p>
-                <p className="text-xs text-gray-500 truncate max-w-[160px]">{user?.email}</p>
-              </div>
-            </div>
-            
+          {/* Logout */}
+          <div className="p-2 mt-auto">
             <Button 
-              variant="outline" 
-              className="w-full" 
+              variant="ghost" 
+              className={`
+                w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50
+                ${isCollapsed ? "justify-center px-0" : ""}
+              `}
               onClick={handleLogout}
               disabled={logoutMutation.isPending}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              {logoutMutation.isPending ? "Logging out..." : "Log out"}
+              <LogOut size={20} className={isCollapsed ? "" : "mr-2"} />
+              {!isCollapsed && "Logout"}
             </Button>
           </div>
         </div>
-      </div>
+      </aside>
       
       {/* Overlay for mobile */}
-      {isMobile && isOpen && (
+      {isMobile && !isCollapsed && (
         <div 
           className="fixed inset-0 bg-black/50 z-30"
-          onClick={toggleSidebar}
+          onClick={handleToggle}
         />
       )}
     </>

@@ -1,14 +1,18 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertCategorySchema } from "@shared/schema";
+import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { categoryColors } from "@/lib/utils";
-import { X, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CategoryFormProps {
   open: boolean;
@@ -16,309 +20,259 @@ interface CategoryFormProps {
   editCategory?: any;
 }
 
+// Extended schema with custom validation
+const categoryFormSchema = insertCategorySchema.extend({
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+  goalHours: z.coerce.number().min(0, { message: "Goal hours must be a positive number" }),
+});
+
+type CategoryFormValues = z.infer<typeof categoryFormSchema>;
+
 export default function CategoryForm({ 
   open, 
-  onOpenChange, 
-  editCategory 
+  onOpenChange,
+  editCategory
 }: CategoryFormProps) {
-  const [name, setName] = useState(editCategory?.name || "");
-  const [icon, setIcon] = useState(editCategory?.icon || "fa-solid fa-pray");
-  const [color, setColor] = useState(editCategory?.color || "blue");
-  const [goalHours, setGoalHours] = useState(editCategory?.goalHours?.toString() || "10");
-  const [subcategories, setSubcategories] = useState<Array<{name: string, goalMinutes: string, goalType: string, id?: number}>>(
-    editCategory?.subcategories?.map((sub: any) => ({
-      id: sub.id,
-      name: sub.name,
-      goalMinutes: sub.goalMinutes.toString(),
-      goalType: sub.goalType
-    })) || []
-  );
-  
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isEditMode = !!editCategory;
   
-  const saveMutation = useMutation({
-    mutationFn: async (formData: any) => {
-      if (editCategory) {
-        // Update existing category
-        const res = await apiRequest("PATCH", `/api/categories/${editCategory.id}`, formData);
-        return await res.json();
-      } else {
-        // Create new category
-        const res = await apiRequest("POST", "/api/categories", formData);
-        return await res.json();
-      }
+  // Available icon options
+  const iconOptions = [
+    { value: "fa-solid fa-chart-line", label: "Chart" },
+    { value: "fa-solid fa-briefcase", label: "Work" },
+    { value: "fa-solid fa-book", label: "Study" },
+    { value: "fa-solid fa-dumbbell", label: "Fitness" },
+    { value: "fa-solid fa-heart", label: "Health" },
+    { value: "fa-solid fa-church", label: "Faith" },
+    { value: "fa-solid fa-palette", label: "Art" },
+    { value: "fa-solid fa-gamepad", label: "Gaming" },
+    { value: "fa-solid fa-utensils", label: "Food" },
+    { value: "fa-solid fa-house", label: "Home" },
+    { value: "fa-solid fa-code", label: "Coding" },
+    { value: "fa-solid fa-people-group", label: "Social" },
+  ];
+
+  // Available color options
+  const colorOptions = Object.keys(categoryColors).map(color => ({
+    value: color,
+    label: color.charAt(0).toUpperCase() + color.slice(1)
+  }));
+  
+  // Form definition using useForm from react-hook-form
+  const form = useForm<CategoryFormValues>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: editCategory ? {
+      ...editCategory
+    } : {
+      name: "",
+      color: "blue",
+      icon: "fa-solid fa-chart-line",
+      goalHours: 1,
+      userId: user?.id,
+      order: 0
+    }
+  });
+  
+  // Create category mutation
+  const createCategoryMutation = useMutation({
+    mutationFn: async (values: CategoryFormValues) => {
+      const response = await apiRequest("POST", "/api/categories", values);
+      return await response.json();
     },
-    onSuccess: async (data) => {
-      // Process subcategories
-      if (subcategories.length > 0) {
-        // For each subcategory, create or update
-        for (const sub of subcategories) {
-          if (sub.id) {
-            // Update existing subcategory
-            await apiRequest("PATCH", `/api/subcategories/${sub.id}`, {
-              name: sub.name,
-              goalMinutes: parseInt(sub.goalMinutes),
-              goalType: sub.goalType
-            });
-          } else {
-            // Create new subcategory
-            await apiRequest("POST", "/api/subcategories", {
-              categoryId: data.id,
-              name: sub.name,
-              goalMinutes: parseInt(sub.goalMinutes),
-              goalType: sub.goalType
-            });
-          }
-        }
-      }
+    onSuccess: () => {
+      // Invalidate relevant queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/categories', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard', user?.id] });
       
-      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      // Close form and show success toast
       onOpenChange(false);
       toast({
-        title: `Category ${editCategory ? "updated" : "created"}`,
-        description: `${name} has been ${editCategory ? "updated" : "created"} successfully`,
+        title: "Category created",
+        description: "Your new category has been created successfully!",
+      });
+      
+      // Reset form
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create category",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Update category mutation
+  const updateCategoryMutation = useMutation({
+    mutationFn: async (values: CategoryFormValues) => {
+      const response = await apiRequest("PATCH", `/api/categories/${editCategory.id}`, values);
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/categories', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard', user?.id] });
+      
+      // Close form and show success toast
+      onOpenChange(false);
+      toast({
+        title: "Category updated",
+        description: "Your category has been updated successfully!",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: `Failed to ${editCategory ? "update" : "create"} category`,
+        title: "Failed to update category",
         description: error.message,
         variant: "destructive",
       });
-    },
+    }
   });
   
-  const handleAddSubcategory = () => {
-    setSubcategories([...subcategories, {
-      name: "",
-      goalMinutes: "60",
-      goalType: "time"
-    }]);
-  };
-  
-  const handleRemoveSubcategory = (index: number) => {
-    const newSubcategories = [...subcategories];
-    newSubcategories.splice(index, 1);
-    setSubcategories(newSubcategories);
-  };
-  
-  const handleSubcategoryChange = (index: number, field: string, value: string) => {
-    const newSubcategories = [...subcategories];
-    newSubcategories[index] = {
-      ...newSubcategories[index],
-      [field]: value
+  // Handle form submission
+  const onSubmit = (values: CategoryFormValues) => {
+    const payload = {
+      ...values,
+      userId: user?.id || 0
     };
-    setSubcategories(newSubcategories);
-  };
-  
-  const handleSave = () => {
-    if (!name) {
-      toast({
-        title: "Name is required",
-        description: "Please provide a name for the category",
-        variant: "destructive",
-      });
-      return;
+    
+    if (isEditMode) {
+      updateCategoryMutation.mutate(payload);
+    } else {
+      createCategoryMutation.mutate(payload);
     }
-    
-    // Prepare form data
-    const formData = {
-      name,
-      icon,
-      color,
-      goalHours: parseFloat(goalHours),
-      order: editCategory?.order || 0,
-    };
-    
-    saveMutation.mutate(formData);
   };
-  
-  const iconOptions = [
-    { value: "fa-solid fa-pray", label: "Prayer" },
-    { value: "fa-solid fa-heart", label: "Heart" },
-    { value: "fa-solid fa-briefcase", label: "Work" },
-    { value: "fa-solid fa-dumbbell", label: "Exercise" },
-    { value: "fa-solid fa-book", label: "Book" },
-    { value: "fa-solid fa-graduation-cap", label: "Education" },
-    { value: "fa-solid fa-users", label: "Social" },
-    { value: "fa-solid fa-utensils", label: "Food" },
-    { value: "fa-solid fa-couch", label: "Rest" },
-    { value: "fa-solid fa-code", label: "Coding" },
-    { value: "fa-solid fa-gamepad", label: "Gaming" },
-    { value: "fa-solid fa-palette", label: "Art" },
-    { value: "fa-solid fa-music", label: "Music" },
-    { value: "fa-solid fa-running", label: "Run" },
-    { value: "fa-solid fa-home", label: "Home" },
-    { value: "fa-solid fa-baby", label: "Family" },
-  ];
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">{editCategory ? "Edit" : "Create"} Category</DialogTitle>
-          <DialogClose className="absolute right-4 top-4 text-gray-500 hover:text-gray-700">
-            <X className="h-4 w-4" />
-          </DialogClose>
+          <DialogTitle>{isEditMode ? "Edit" : "Create"} Category</DialogTitle>
         </DialogHeader>
         
-        <div className="p-0 sm:p-2">
-          {/* Category Details */}
-          <div className="grid gap-4 md:grid-cols-2 mb-6">
-            <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">Category Name</Label>
-              <Input 
-                value={name} 
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Faith, Work, Health"
-                className="w-full"
-              />
-            </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="E.g., Work, Study, Health..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">Icon</Label>
-              <Select 
-                value={icon} 
-                onValueChange={(value) => setIcon(value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select an icon" />
-                </SelectTrigger>
-                <SelectContent>
-                  {iconOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <span className="flex items-center">
-                        <i className={`${option.value} mr-2`}></i>
-                        {option.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <FormField
+              control={form.control}
+              name="goalHours"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Daily Goal (hours)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0"
+                      step="0.5"
+                      placeholder="E.g., 2" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">Color</Label>
-              <Select 
-                value={color} 
-                onValueChange={(value) => setColor(value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a color" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(categoryColors).map(([key, value]) => (
-                    <SelectItem key={key} value={key}>
-                      <div className="flex items-center">
-                        <div className={`h-4 w-4 rounded-full mr-2 ${value.bg}`}></div>
-                        {key.charAt(0).toUpperCase() + key.slice(1)}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <FormField
+              control={form.control}
+              name="icon"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Icon</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an icon" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {iconOptions.map((icon) => (
+                        <SelectItem key={icon.value} value={icon.value}>
+                          <div className="flex items-center">
+                            <i className={`${icon.value} mr-2`}></i>
+                            <span>{icon.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div>
-              <Label className="block text-sm font-medium text-gray-700 mb-2">Goal Hours (per week)</Label>
-              <Input 
-                type="number" 
-                min="0"
-                step="0.5"
-                value={goalHours} 
-                onChange={(e) => setGoalHours(e.target.value)}
-                className="w-full"
-              />
-            </div>
-          </div>
-          
-          {/* Subcategories */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">Subcategories</h3>
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Color</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a color" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {colorOptions.map((color) => (
+                        <SelectItem key={color.value} value={color.value}>
+                          <div className="flex items-center">
+                            <div className={`h-4 w-4 rounded-full ${categoryColors[color.value].bg} mr-2`}></div>
+                            <span>{color.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <DialogFooter className="mt-6">
               <Button 
+                type="button" 
                 variant="outline" 
-                size="sm" 
-                onClick={handleAddSubcategory}
-                className="flex items-center"
+                onClick={() => onOpenChange(false)}
+                className="mr-2"
+                disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
               >
-                <Plus className="h-4 w-4 mr-1" />
-                Add
+                Cancel
               </Button>
-            </div>
-            
-            {subcategories.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">
-                No subcategories. Add some to track specific activities.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {subcategories.map((sub, index) => (
-                  <div key={index} className="grid gap-3 md:grid-cols-3 bg-gray-50 p-3 rounded-md relative">
-                    <button
-                      onClick={() => handleRemoveSubcategory(index)}
-                      className="absolute right-2 top-2 text-gray-400 hover:text-gray-700"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                    
-                    <div>
-                      <Label className="block text-sm font-medium text-gray-700 mb-2">Name</Label>
-                      <Input 
-                        value={sub.name} 
-                        onChange={(e) => handleSubcategoryChange(index, "name", e.target.value)}
-                        placeholder="e.g., Prayer, Reading"
-                        className="w-full"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label className="block text-sm font-medium text-gray-700 mb-2">Goal Minutes</Label>
-                      <Input 
-                        type="number" 
-                        min="0"
-                        step="15"
-                        value={sub.goalMinutes} 
-                        onChange={(e) => handleSubcategoryChange(index, "goalMinutes", e.target.value)}
-                        className="w-full"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label className="block text-sm font-medium text-gray-700 mb-2">Type</Label>
-                      <Select 
-                        value={sub.goalType} 
-                        onValueChange={(value) => handleSubcategoryChange(index, "goalType", value)}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="time">Time (minutes)</SelectItem>
-                          <SelectItem value="binary">Yes/No Habit</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSave}
-              disabled={saveMutation.isPending}
-            >
-              {saveMutation.isPending ? "Saving..." : `${editCategory ? "Update" : "Create"} Category`}
-            </Button>
-          </div>
-        </div>
+              <Button 
+                type="submit"
+                disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+              >
+                {createCategoryMutation.isPending || updateCategoryMutation.isPending 
+                  ? "Saving..." 
+                  : isEditMode ? "Update" : "Create"
+                }
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

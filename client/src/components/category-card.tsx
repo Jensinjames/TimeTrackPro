@@ -63,7 +63,8 @@ export default function CategoryCard({
             <Progress 
               value={progress} 
               className="h-2" 
-              indicatorClassName={colorStyle.bg}
+              // Use className for styling directly without custom props
+              // that aren't supported by the component
             />
           </div>
         </div>

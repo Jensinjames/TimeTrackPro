@@ -1,16 +1,24 @@
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
-import { timeOptions, getCategoryIcon, getCategoryColor } from "@/lib/utils";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertDailyEntrySchema } from "@shared/schema";
+import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
+import { categoryColors, getCategoryIcon, timeOptions } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { CategoryWithSubcategories } from "@shared/schema";
+import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 interface DailyEntryFormProps {
   open: boolean;
@@ -20,221 +28,401 @@ interface DailyEntryFormProps {
   currentEntry?: any;
 }
 
+// Extended schema with custom validation
+const dailyEntryFormSchema = insertDailyEntrySchema.extend({
+  sleepHours: z.coerce.number().min(0).max(24).nullable(),
+});
+
+type DailyEntryFormValues = z.infer<typeof dailyEntryFormSchema>;
+
 export default function DailyEntryForm({ 
   open, 
-  onOpenChange, 
+  onOpenChange,
   selectedDate,
   categories,
   currentEntry
 }: DailyEntryFormProps) {
-  const [dateValue, setDateValue] = useState<string>(selectedDate.toISOString().split('T')[0]);
-  const [timeValues, setTimeValues] = useState<{[key: number]: string}>({});
-  const [habitValues, setHabitValues] = useState<{[key: number]: boolean}>({});
-  const [sleepHours, setSleepHours] = useState<string>("0");
-  
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
+  const isEditMode = !!currentEntry;
   
-  // Initialize form values from current entry if available
-  useEffect(() => {
-    if (currentEntry) {
-      setSleepHours(currentEntry.sleepHours.toString());
-      
-      // Set time values
-      const newTimeValues: {[key: number]: string} = {};
-      currentEntry.timeRecords.forEach((record: any) => {
-        newTimeValues[record.subcategoryId] = record.minutes.toString();
-      });
-      setTimeValues(newTimeValues);
-      
-      // Set habit values
-      const newHabitValues: {[key: number]: boolean} = {};
-      currentEntry.habitRecords.forEach((record: any) => {
-        newHabitValues[record.subcategoryId] = record.completed;
-      });
-      setHabitValues(newHabitValues);
+  // Track time and habit records separately
+  const [timeRecords, setTimeRecords] = useState<Record<number, number>>({});
+  const [habitRecords, setHabitRecords] = useState<Record<number, boolean>>({});
+  
+  // Form definition using useForm from react-hook-form
+  const form = useForm<DailyEntryFormValues>({
+    resolver: zodResolver(dailyEntryFormSchema),
+    defaultValues: currentEntry ? {
+      ...currentEntry,
+      date: selectedDate,
+    } : {
+      userId: user?.id,
+      date: selectedDate,
+      sleepHours: 8,
+      dailyScore: null,
+      motivationLevel: null,
+      healthBalance: null,
     }
-  }, [currentEntry]);
+  });
   
-  // Update date when selected date changes
-  useEffect(() => {
-    setDateValue(selectedDate.toISOString().split('T')[0]);
-  }, [selectedDate]);
-  
-  const saveMutation = useMutation({
-    mutationFn: async (formData: any) => {
-      const res = await apiRequest("POST", "/api/entries", formData);
-      return await res.json();
+  // Create entry mutation
+  const createDailyEntryMutation = useMutation({
+    mutationFn: async (values: DailyEntryFormValues) => {
+      // First create the daily entry
+      const entryResponse = await apiRequest("POST", "/api/entries", values);
+      const entry = await entryResponse.json();
+      
+      // Then create time and habit records
+      const recordPromises = [];
+      
+      // Add time records
+      for (const [subcategoryId, minutes] of Object.entries(timeRecords)) {
+        if (minutes > 0) {
+          recordPromises.push(
+            apiRequest("POST", "/api/time-records", {
+              entryId: entry.id,
+              subcategoryId: parseInt(subcategoryId),
+              minutes: minutes * 60 // Convert hours to minutes
+            })
+          );
+        }
+      }
+      
+      // Add habit records
+      for (const [subcategoryId, completed] of Object.entries(habitRecords)) {
+        recordPromises.push(
+          apiRequest("POST", "/api/habit-records", {
+            entryId: entry.id,
+            subcategoryId: parseInt(subcategoryId),
+            completed
+          })
+        );
+      }
+      
+      // Wait for all records to be created
+      await Promise.all(recordPromises);
+      
+      return entry;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      // Invalidate relevant queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/entries', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard', user?.id, selectedDate.toISOString().split('T')[0]] });
+      
+      // Close form and show success toast
       onOpenChange(false);
       toast({
-        title: "Entry saved",
-        description: "Your daily entry has been saved successfully",
+        title: "Entry created",
+        description: "Your daily entry has been saved successfully!",
+      });
+      
+      // Reset form and records
+      form.reset();
+      setTimeRecords({});
+      setHabitRecords({});
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create entry",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Update entry mutation
+  const updateDailyEntryMutation = useMutation({
+    mutationFn: async (values: DailyEntryFormValues) => {
+      // First update the daily entry
+      const entryResponse = await apiRequest(
+        "PATCH", 
+        `/api/entries/${currentEntry.id}`, 
+        values
+      );
+      const entry = await entryResponse.json();
+      
+      // Then update time and habit records
+      const recordPromises = [];
+      
+      // Update time records
+      for (const [subcategoryId, minutes] of Object.entries(timeRecords)) {
+        recordPromises.push(
+          apiRequest("PUT", `/api/entries/${entry.id}/time-records/${subcategoryId}`, {
+            minutes: minutes * 60 // Convert hours to minutes
+          })
+        );
+      }
+      
+      // Update habit records
+      for (const [subcategoryId, completed] of Object.entries(habitRecords)) {
+        recordPromises.push(
+          apiRequest("PUT", `/api/entries/${entry.id}/habit-records/${subcategoryId}`, {
+            completed
+          })
+        );
+      }
+      
+      // Wait for all records to be updated
+      await Promise.all(recordPromises);
+      
+      return entry;
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/entries', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard', user?.id, selectedDate.toISOString().split('T')[0]] });
+      
+      // Close form and show success toast
+      onOpenChange(false);
+      toast({
+        title: "Entry updated",
+        description: "Your daily entry has been updated successfully!",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to save entry",
+        title: "Failed to update entry",
         description: error.message,
         variant: "destructive",
       });
-    },
+    }
   });
   
-  const handleSave = () => {
-    // Prepare time records
-    const timeRecords = Object.entries(timeValues).map(([subcategoryId, minutes]) => ({
-      subcategoryId: parseInt(subcategoryId),
-      minutes: parseInt(minutes || "0"),
+  // Initialize time and habit records from currentEntry if in edit mode
+  useState(() => {
+    if (isEditMode && currentEntry) {
+      // Initialize time records
+      const initialTimeRecords: Record<number, number> = {};
+      currentEntry.timeRecords?.forEach((record: any) => {
+        initialTimeRecords[record.subcategoryId] = record.minutes / 60; // Convert minutes to hours
+      });
+      setTimeRecords(initialTimeRecords);
+      
+      // Initialize habit records
+      const initialHabitRecords: Record<number, boolean> = {};
+      currentEntry.habitRecords?.forEach((record: any) => {
+        initialHabitRecords[record.subcategoryId] = record.completed;
+      });
+      setHabitRecords(initialHabitRecords);
+    }
+  });
+  
+  // Handle time record change
+  const handleTimeChange = (subcategoryId: number, value: string) => {
+    setTimeRecords(prev => ({
+      ...prev,
+      [subcategoryId]: parseFloat(value)
     }));
-    
-    // Prepare habit records
-    const habitRecords = Object.entries(habitValues).map(([subcategoryId, completed]) => ({
-      subcategoryId: parseInt(subcategoryId),
-      completed: completed || false,
-    }));
-    
-    // Prepare form data
-    const formData = {
-      date: new Date(dateValue).toISOString(),
-      sleepHours: parseFloat(sleepHours || "0"),
-      timeRecords,
-      habitRecords,
-    };
-    
-    saveMutation.mutate(formData);
   };
   
-  // Group subcategories by category
-  const categorizedSubcategories = categories.map(cat => ({
-    ...cat,
-    timeSubcategories: cat.subcategories.filter(sub => sub.goalType === "time"),
-    habitSubcategories: cat.subcategories.filter(sub => sub.goalType === "binary"),
-  }));
+  // Handle habit record change
+  const handleHabitChange = (subcategoryId: number, checked: boolean) => {
+    setHabitRecords(prev => ({
+      ...prev,
+      [subcategoryId]: checked
+    }));
+  };
   
+  // Handle form submission
+  const onSubmit = (values: DailyEntryFormValues) => {
+    const payload = {
+      ...values,
+      userId: user?.id || 0,
+      // Ensure date is in the correct format
+      date: selectedDate,
+    };
+    
+    if (isEditMode) {
+      updateDailyEntryMutation.mutate(payload);
+    } else {
+      createDailyEntryMutation.mutate(payload);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className={isMobile ? "w-full max-w-full h-full max-h-full" : "sm:max-w-[650px]"}>
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Add Daily Entry</DialogTitle>
-          <DialogClose className="absolute right-4 top-4 text-gray-500 hover:text-gray-700">
-            <X className="h-4 w-4" />
-          </DialogClose>
+          <DialogTitle>{isEditMode ? "Edit" : "Add"} Daily Entry</DialogTitle>
         </DialogHeader>
         
-        <div className="p-0 sm:p-2">
-          <div className="mb-6">
-            <Label className="block text-sm font-medium text-gray-700 mb-2">Date</Label>
-            <Input 
-              type="date" 
-              value={dateValue} 
-              onChange={(e) => setDateValue(e.target.value)}
-              className="w-full"
-            />
-          </div>
-          
-          {/* Sleep Duration */}
-          <div className="mb-6">
-            <Label className="block text-sm font-medium text-gray-700 mb-2">Sleep Duration</Label>
-            <Select 
-              value={sleepHours} 
-              onValueChange={(value) => setSleepHours(value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select sleep duration" />
-              </SelectTrigger>
-              <SelectContent>
-                {timeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Render time tracking inputs for each category */}
-          {categorizedSubcategories.map((category) => (
-            <div key={category.id} className="mb-6">
-              {category.timeSubcategories.length > 0 && (
-                <>
-                  <h3 className="text-lg font-medium mb-4 flex items-center">
-                    <div className={`h-6 w-6 rounded ${getCategoryColor(category.name).bg} text-white flex items-center justify-center mr-2`}>
-                      <i className={`${getCategoryIcon(category.icon)} text-xs`}></i>
-                    </div>
-                    {category.name}
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {category.timeSubcategories.map((subcategory) => (
-                        <div key={subcategory.id}>
-                          <Label className="block text-sm font-medium text-gray-700 mb-2">
-                            {subcategory.name}
-                          </Label>
-                          <Select 
-                            value={timeValues[subcategory.id] || "0"} 
-                            onValueChange={(value) => setTimeValues({...timeValues, [subcategory.id]: value})}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {timeOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="text-sm text-gray-500 mb-4">
+              Date: {format(selectedDate, "EEEE, MMMM d, yyyy")}
             </div>
-          ))}
-          
-          {/* Health Habits section */}
-          <div className="mb-6">
-            <h3 className="text-lg font-medium mb-4">Health Habits</h3>
             
-            <div className="space-y-4">
-              {categories.flatMap(category => 
-                category.subcategories
-                  .filter(sub => sub.goalType === "binary")
-                  .map(subcategory => (
-                    <div 
-                      key={subcategory.id} 
-                      className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
-                    >
-                      <span className="text-sm font-medium">{subcategory.name}</span>
-                      <Switch 
-                        checked={habitValues[subcategory.id] || false}
-                        onCheckedChange={(checked) => setHabitValues({...habitValues, [subcategory.id]: checked})}
-                      />
+            <Tabs defaultValue="time" className="w-full">
+              <TabsList className="grid grid-cols-3 mb-4">
+                <TabsTrigger value="time">Time Tracking</TabsTrigger>
+                <TabsTrigger value="habits">Habits</TabsTrigger>
+                <TabsTrigger value="metrics">Metrics</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="time" className="space-y-4">
+                {categories.map((category) => (
+                  <div key={category.id} className="space-y-3">
+                    <div className="flex items-center">
+                      <div className={`
+                        h-8 w-8 rounded-full ${categoryColors[category.color]?.light || "bg-gray-100"} 
+                        flex items-center justify-center mr-2
+                      `}>
+                        <i className={`${getCategoryIcon(category.icon)} ${categoryColors[category.color]?.text || "text-gray-500"}`}></i>
+                      </div>
+                      <h3 className="font-medium">{category.name}</h3>
                     </div>
-                  ))
-              )}
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSave}
-              disabled={saveMutation.isPending}
-            >
-              {saveMutation.isPending ? "Saving..." : "Save Entry"}
-            </Button>
-          </div>
-        </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-10">
+                      {category.subcategories
+                        .filter(sub => !sub.goalType || sub.goalType === "time")
+                        .map(sub => (
+                          <div key={sub.id} className="flex justify-between items-center">
+                            <label className="text-sm">{sub.name}</label>
+                            <Select
+                              defaultValue={timeRecords[sub.id]?.toString() || "0"}
+                              onValueChange={(value) => handleTimeChange(sub.id, value)}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue placeholder="Select time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeOptions.map(option => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ))
+                      }
+                    </div>
+                    
+                    <Separator className="my-4" />
+                  </div>
+                ))}
+              </TabsContent>
+              
+              <TabsContent value="habits" className="space-y-4">
+                {categories.map((category) => {
+                  const habitsExist = category.subcategories.some(sub => 
+                    sub.goalType === "habit" || sub.goalType === "boolean"
+                  );
+                  
+                  if (!habitsExist) return null;
+                  
+                  return (
+                    <div key={category.id} className="space-y-3">
+                      <div className="flex items-center">
+                        <div className={`
+                          h-8 w-8 rounded-full ${categoryColors[category.color]?.light || "bg-gray-100"} 
+                          flex items-center justify-center mr-2
+                        `}>
+                          <i className={`${getCategoryIcon(category.icon)} ${categoryColors[category.color]?.text || "text-gray-500"}`}></i>
+                        </div>
+                        <h3 className="font-medium">{category.name}</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-10">
+                        {category.subcategories
+                          .filter(sub => sub.goalType === "habit" || sub.goalType === "boolean")
+                          .map(sub => (
+                            <div key={sub.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`habit-${sub.id}`}
+                                checked={habitRecords[sub.id] || false}
+                                onCheckedChange={(checked) => 
+                                  handleHabitChange(sub.id, checked === true)
+                                }
+                              />
+                              <label 
+                                htmlFor={`habit-${sub.id}`}
+                                className="text-sm cursor-pointer"
+                              >
+                                {sub.name}
+                              </label>
+                            </div>
+                          ))
+                        }
+                      </div>
+                      
+                      <Separator className="my-4" />
+                    </div>
+                  );
+                })}
+                
+                {!categories.some(cat => 
+                  cat.subcategories.some(sub => 
+                    sub.goalType === "habit" || sub.goalType === "boolean"
+                  )
+                ) && (
+                  <div className="text-center py-6">
+                    <p className="text-gray-500 mb-2">No habits added yet</p>
+                    <p className="text-sm text-gray-400">
+                      Create subcategories with "Habit" type in the category settings
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="metrics" className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="sleepHours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sleep Duration (hours)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="0"
+                          max="24"
+                          step="0.5"
+                          placeholder="E.g., 8" 
+                          {...field}
+                          value={field.value !== null ? field.value : ''}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? null : Number(e.target.value);
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="text-sm text-gray-500 mt-4">
+                  <p>Other metrics like Daily Score, Motivation Level, and Health Balance are calculated automatically based on your time entries and habits.</p>
+                </div>
+              </TabsContent>
+            </Tabs>
+            
+            <DialogFooter className="mt-6">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+                className="mr-2"
+                disabled={createDailyEntryMutation.isPending || updateDailyEntryMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                disabled={createDailyEntryMutation.isPending || updateDailyEntryMutation.isPending}
+              >
+                {createDailyEntryMutation.isPending || updateDailyEntryMutation.isPending 
+                  ? "Saving..." 
+                  : isEditMode ? "Update" : "Save"
+                }
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
