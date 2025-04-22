@@ -85,13 +85,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     try {
+      console.log("Creating subcategory with data:", req.body);
+      
+      // Validate required fields
+      if (!req.body.name || !req.body.categoryId || req.body.goalMinutes === undefined) {
+        console.error("Missing required fields for subcategory creation:", req.body);
+        return res.status(400).json({ 
+          message: "Invalid subcategory data. Please ensure name, categoryId, and goalMinutes are provided." 
+        });
+      }
+      
       // Check if the category belongs to the user
       const category = await storage.getCategory(req.body.categoryId);
       if (!category || category.userId !== req.user.id) {
+        console.error(`Category not found or not owned by user. CategoryId: ${req.body.categoryId}, UserId: ${req.user.id}`);
         return res.status(404).json({ message: "Category not found" });
       }
       
-      const subcategory = await storage.createSubcategory(req.body);
+      // Ensure goalType has a default value if not provided
+      const subcategoryData = {
+        ...req.body,
+        goalType: req.body.goalType || "time"
+      };
+      
+      const subcategory = await storage.createSubcategory(subcategoryData);
+      console.log("Subcategory created successfully:", subcategory);
       res.status(201).json(subcategory);
     } catch (error) {
       console.error("Error creating subcategory:", error);

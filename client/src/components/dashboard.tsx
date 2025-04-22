@@ -130,10 +130,6 @@ export default function Dashboard() {
     setDailyEntryOpen(true);
   };
   
-  const handleAddCategoryClick = () => {
-    setCategoryFormOpen(true);
-  };
-  
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -239,48 +235,15 @@ export default function Dashboard() {
         )}
       </div>
       
-      <div className="flex items-center space-x-2 w-full sm:w-auto">
-        {!isMobile ? (
-          <>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleAddCategoryClick}
-              className="flex-1 sm:flex-auto"
-            >
-              <Plus className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="whitespace-nowrap">Add Category</span>
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleAddEntryClick}
-              className="flex-1 sm:flex-auto"
-            >
-              <Plus className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="whitespace-nowrap">Add Entry</span>
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleAddCategoryClick}
-              className="flex-1"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              <span>Category</span>
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleAddEntryClick}
-              className="flex-1"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              <span>Entry</span>
-            </Button>
-          </>
-        )}
+      <div className="flex items-center w-full sm:w-auto justify-end">
+        <Button 
+          size="sm" 
+          onClick={handleAddEntryClick}
+          className="flex-1 sm:flex-auto"
+        >
+          <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+          <span className="whitespace-nowrap">Add Daily Entry</span>
+        </Button>
       </div>
     </div>
   );

@@ -113,11 +113,18 @@ function CategorySettings() {
 
   const createSubcategoryMutation = useMutation({
     mutationFn: async (subcategory: any) => {
+      console.log("Sending subcategory creation request:", subcategory);
       const res = await apiRequest("POST", "/api/subcategories", subcategory);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create subcategory");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      // Also invalidate dashboard to reflect the changes there
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setIsAddingSubcategory(false);
       setNewSubcategory({
         name: "",
@@ -131,9 +138,10 @@ function CategorySettings() {
       });
     },
     onError: (error) => {
+      console.error("Subcategory creation error:", error);
       toast({
         title: "Failed to create subcategory",
-        description: error.message,
+        description: error.message || "An error occurred while creating the subcategory",
         variant: "destructive",
       });
     },
@@ -163,11 +171,18 @@ function CategorySettings() {
   
   const updateSubcategoryMutation = useMutation({
     mutationFn: async (updatedSubcategory: any) => {
+      console.log("Sending subcategory update request:", updatedSubcategory);
       const res = await apiRequest("PATCH", `/api/subcategories/${updatedSubcategory.id}`, updatedSubcategory);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update subcategory");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      // Also invalidate dashboard to reflect the changes there
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setEditingSubcategory(null);
       toast({
         title: "Subcategory updated",
@@ -175,9 +190,10 @@ function CategorySettings() {
       });
     },
     onError: (error) => {
+      console.error("Subcategory update error:", error);
       toast({
         title: "Failed to update subcategory",
-        description: error.message,
+        description: error.message || "An error occurred while updating the subcategory",
         variant: "destructive",
       });
     },
