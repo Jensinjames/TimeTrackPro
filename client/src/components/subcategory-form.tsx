@@ -55,7 +55,7 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   
   // Create subcategory mutation
   const createSubcategoryMutation = useMutation({
-    mutationFn: async (subcategoryData: any) => {
+    mutationFn: async (subcategoryData: SubcategoryFormData) => {
       const res = await apiRequest("POST", "/api/subcategories", subcategoryData);
       if (!res.ok) {
         const errorData = await res.json();
@@ -83,7 +83,7 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   
   // Update subcategory mutation
   const updateSubcategoryMutation = useMutation({
-    mutationFn: async (subcategoryData: any) => {
+    mutationFn: async (subcategoryData: SubcategoryFormData) => {
       const res = await apiRequest("PATCH", `/api/subcategories/${subcategoryData.id}`, {
         name: subcategoryData.name,
         goalType: subcategoryData.goalType,
@@ -123,11 +123,16 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   
   // Handle form submission
   const handleSubmit = () => {
+    const goalHoursValue = debouncedSubcategory.goalHours || 0;
+    const hoursAsNumber = typeof goalHoursValue === 'string' 
+      ? parseFloat(goalHoursValue) 
+      : goalHoursValue;
+      
     const payload = {
       ...debouncedSubcategory,
       // Convert hours to minutes for the API
       goalMinutes: debouncedSubcategory.goalType === 'time' 
-        ? Math.round(parseFloat(debouncedSubcategory.goalHours || 0) * 60) 
+        ? Math.round(hoursAsNumber * 60) 
         : 0
     };
     

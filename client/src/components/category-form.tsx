@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Define a proper type for the category
-interface CategoryFormData {
+export interface CategoryFormData {
   id?: number;
   name: string;
   icon: string;
   color: string;
   goalHours: number;
-  goalPeriod?: 'daily' | 'monthly';
+  goalPeriod: string; // Changed to allow any string for compatibility with API
   [key: string]: any; // Allow additional properties
 }
 
