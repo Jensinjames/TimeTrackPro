@@ -427,6 +427,27 @@ export class DatabaseStorage implements IStorage {
       createTableIfMissing: true
     });
   }
+  
+  async getDailyEntriesInRange(userId: number, startDate: Date, endDate: Date): Promise<any[]> {
+    try {
+      const entries = await db
+        .select()
+        .from(dailyEntries)
+        .where(
+          and(
+            eq(dailyEntries.userId, userId),
+            gte(dailyEntries.date, startDate),
+            lte(dailyEntries.date, endDate)
+          )
+        )
+        .orderBy(dailyEntries.date);
+      
+      return entries;
+    } catch (error) {
+      console.error("Error fetching daily entries in range:", error);
+      return [];
+    }
+  }
 
   // User methods
   async getUser(id: number): Promise<User | undefined> {

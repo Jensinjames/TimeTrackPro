@@ -1,89 +1,129 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, BarChart, PlusCircle, History, LineChart, Settings } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { 
+  BarChart, 
+  Calendar, 
+  Settings, 
+  Menu, 
+  X, 
+  LogOut 
+} from "lucide-react";
 
 export default function Sidebar() {
+  const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
-  const { logoutMutation } = useAuth();
+  const { user, logoutMutation } = useAuth();
+  const isMobile = useIsMobile();
+  
+  const navigationItems = [
+    { name: "Dashboard", path: "/", icon: <BarChart className="w-5 h-5" /> },
+    { name: "History", path: "/history", icon: <Calendar className="w-5 h-5" /> },
+    { name: "Settings", path: "/settings", icon: <Settings className="w-5 h-5" /> },
+  ];
   
   const handleLogout = () => {
     logoutMutation.mutate();
   };
   
-  const menuItems = [
-    {
-      icon: <BarChart className="h-5 w-5" />,
-      text: "Dashboard",
-      path: "/",
-    },
-    {
-      icon: <PlusCircle className="h-5 w-5" />,
-      text: "Add Entry",
-      path: "/add",
-    },
-    {
-      icon: <History className="h-5 w-5" />,
-      text: "History",
-      path: "/history",
-    },
-    {
-      icon: <LineChart className="h-5 w-5" />,
-      text: "Reports",
-      path: "/reports",
-    },
-    {
-      icon: <Settings className="h-5 w-5" />,
-      text: "Settings",
-      path: "/settings",
-    },
-  ];
+  const toggleSidebar = () => {
+    setIsOpen(!isOpen);
+  };
+  
+  const closeSidebar = () => {
+    if (isMobile && isOpen) {
+      setIsOpen(false);
+    }
+  };
   
   return (
-    <aside className="w-16 sm:w-64 bg-white shadow-md flex-shrink-0 border-r border-gray-200">
-      <div className="h-full flex flex-col">
-        <div className="h-16 flex items-center px-4 border-b border-gray-200">
-          <div className="flex items-center">
-            <div className="text-blue-600 text-2xl sm:text-xl">
-              <i className="fas fa-clock"></i>
+    <>
+      {/* Mobile Hamburger Menu */}
+      {isMobile && (
+        <button 
+          onClick={toggleSidebar}
+          className="fixed top-4 left-4 z-50 bg-white p-2 rounded-md shadow-md"
+        >
+          {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      )}
+      
+      {/* Sidebar */}
+      <div 
+        className={`
+          fixed md:static h-full bg-white shadow-lg z-40 transition-all duration-300
+          ${isMobile ? (isOpen ? "left-0" : "-left-64") : "left-0"}
+          w-64
+        `}
+      >
+        <div className="flex flex-col h-full p-4">
+          {/* App Name and Logo */}
+          <div className="flex items-center mb-8 mt-2">
+            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-white mr-2">
+              <i className="fa-solid fa-clock text-sm"></i>
             </div>
-            <h1 className="ml-2 text-xl font-bold hidden sm:block">Rollen</h1>
+            <h1 className="font-bold text-xl">Timetrack</h1>
+          </div>
+          
+          {/* Navigation Links */}
+          <nav className="flex-1">
+            <ul className="space-y-1">
+              {navigationItems.map((item) => (
+                <li key={item.path}>
+                  <Link href={item.path}>
+                    <a 
+                      onClick={closeSidebar}
+                      className={`
+                        flex items-center px-3 py-2 rounded-md transition-colors
+                        ${location === item.path 
+                          ? "bg-primary text-white" 
+                          : "text-gray-700 hover:bg-gray-100"}
+                      `}
+                    >
+                      {item.icon}
+                      <span className="ml-3">{item.name}</span>
+                    </a>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          
+          {/* User and Logout */}
+          <div className="pt-4 border-t">
+            <div className="flex items-center mb-4">
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="bg-primary text-white">{user?.name?.charAt(0) || user?.username?.charAt(0) || "U"}</AvatarFallback>
+              </Avatar>
+              <div className="ml-3">
+                <p className="text-sm font-medium">{user?.name || user?.username}</p>
+                <p className="text-xs text-gray-500 truncate max-w-[160px]">{user?.email}</p>
+              </div>
+            </div>
+            
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={handleLogout}
+              disabled={logoutMutation.isPending}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              {logoutMutation.isPending ? "Logging out..." : "Log out"}
+            </Button>
           </div>
         </div>
-        
-        <nav className="flex-1 py-4 space-y-1">
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              href={item.path}
-              className={cn(
-                "flex items-center py-2 px-4 hover:bg-gray-100 transition-colors",
-                location === item.path ? "bg-gray-100 text-gray-700" : "text-gray-600"
-              )}
-            >
-              <div className="w-6 flex justify-center sm:mr-3">
-                {item.icon}
-              </div>
-              <span className="hidden sm:block">{item.text}</span>
-            </Link>
-          ))}
-        </nav>
-        
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={handleLogout}
-            className="flex items-center py-2 px-4 text-gray-600 hover:bg-gray-100 rounded-md w-full transition-colors"
-            disabled={logoutMutation.isPending}
-          >
-            <div className="w-6 flex justify-center sm:mr-3">
-              <LogOut className="h-5 w-5" />
-            </div>
-            <span className="hidden sm:block">
-              {logoutMutation.isPending ? "Logging out..." : "Logout"}
-            </span>
-          </button>
-        </div>
       </div>
-    </aside>
+      
+      {/* Overlay for mobile */}
+      {isMobile && isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30"
+          onClick={toggleSidebar}
+        />
+      )}
+    </>
   );
 }
