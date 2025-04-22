@@ -755,7 +755,17 @@ export class DatabaseStorage implements IStorage {
       }
       
       const actualHours = actualMinutes / 60;
-      const progress = category.goalHours > 0 ? (actualHours / category.goalHours) * 100 : 0;
+      
+      // Calculate the target hours based on goal period
+      let targetGoalHours = category.goalHours;
+      
+      // If using monthly goal, convert to daily equivalent for progress calculation
+      if (category.goalPeriod === 'monthly' && category.monthlyGoalHours) {
+        targetGoalHours = category.monthlyGoalHours / 30;
+      }
+      
+      // Calculate progress based on the correct goal
+      const progress = targetGoalHours > 0 ? (actualHours / targetGoalHours) * 100 : 0;
       
       return {
         ...category,
