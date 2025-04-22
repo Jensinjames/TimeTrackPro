@@ -9,14 +9,15 @@ import { CategoryWithSubcategories, Subcategory } from "@shared/schema";
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Save, ChevronLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, Save, ChevronLeft, Send, Mail, AlertTriangle } from "lucide-react";
 
 // Custom components
 import CategoryList from "@/components/category-list";
@@ -527,8 +528,90 @@ function NotificationSettings() {
             </Button>
           </div>
         </form>
+        
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <h3 className="font-medium mb-4">Test Email Notifications</h3>
+          <div className="space-y-4">
+            <Card className="bg-gray-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-md flex items-center">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Test Notifications
+                </CardTitle>
+                <CardDescription>
+                  Send test emails to verify your notification settings are working
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <TestEmailButton 
+                    type="daily" 
+                    label="Daily Reminder" 
+                    disabled={!notificationPrefs.emailReminders} 
+                  />
+                  <TestEmailButton 
+                    type="weekly" 
+                    label="Weekly Summary" 
+                    disabled={!notificationPrefs.weeklySummary} 
+                  />
+                  <TestEmailButton 
+                    type="goal" 
+                    label="Goal Achievement" 
+                    disabled={!notificationPrefs.goalAchievement} 
+                  />
+                </div>
+                
+                {!notificationPrefs.emailReminders && 
+                !notificationPrefs.weeklySummary && 
+                !notificationPrefs.goalAchievement && (
+                  <div className="flex items-center mt-4 text-amber-600">
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    <span className="text-sm">Enable at least one notification type to send test emails</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+function TestEmailButton({ type, label, disabled }: { type: 'daily' | 'weekly' | 'goal', label: string, disabled: boolean }) {
+  const { toast } = useToast();
+  
+  const testEmailMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/notifications/test", { type });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Test email sent",
+        description: `A test ${label.toLowerCase()} email has been sent to your email address.`
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send test email",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+  
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => testEmailMutation.mutate()}
+      disabled={disabled || testEmailMutation.isPending}
+      className="flex items-center"
+    >
+      <Send className="h-4 w-4 mr-2" />
+      {testEmailMutation.isPending ? `Sending ${label}...` : `Test ${label}`}
+      {disabled && <Badge className="ml-2 bg-gray-300 text-gray-600">Disabled</Badge>}
+    </Button>
   );
 }
 
