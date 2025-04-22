@@ -30,6 +30,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
 
   // Category methods
   getCategories(userId: number): Promise<CategoryWithSubcategories[]>;
@@ -130,6 +131,15 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    const updatedUser: User = { ...existingUser, ...userData };
+    this.users.set(id, updatedUser);
+    return updatedUser;
   }
 
   // Category methods
@@ -372,6 +382,19 @@ export class MemStorage implements IStorage {
       }
     }
   }
+  
+  // Get daily entries in date range
+  async getDailyEntriesInRange(userId: number, startDate: Date, endDate: Date): Promise<any[]> {
+    const entries = Array.from(this.dailyEntries.values())
+      .filter(entry => 
+        entry.userId === userId && 
+        entry.date >= startDate && 
+        entry.date <= endDate
+      )
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+      
+    return entries;
+  }
 
   // Dashboard data method
   async getDashboardData(userId: number, date: Date): Promise<any> {
@@ -478,6 +501,21 @@ export class DatabaseStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const [createdUser] = await db.insert(users).values(user).returning();
     return createdUser;
+  }
+  
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set(userData)
+        .where(eq(users.id, id))
+        .returning();
+        
+      return updatedUser;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      return undefined;
+    }
   }
 
   // Category methods

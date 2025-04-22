@@ -3,13 +3,116 @@ import { createServer, type Server } from "http";
 import { ImprovedDatabaseStorage } from "./storage-improved";
 // Use the improved storage implementation that handles unaccounted time better
 const storage = new ImprovedDatabaseStorage();
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { addDays, startOfDay, endOfDay, format } from "date-fns";
 import { DailyEntryWithDetails } from "../shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
   setupAuth(app);
+
+  // Get current user
+  app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    // Return user data without sensitive information
+    const { password, ...user } = req.user;
+    res.json(user);
+  });
+
+  // Update user profile
+  app.patch("/api/user", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      // Only allow updating certain fields
+      const allowedFields = ['name', 'email', 'username'];
+      const updateData: Record<string, any> = {};
+      
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      }
+      
+      // Handle password change separately if provided
+      if (req.body.currentPassword && req.body.newPassword) {
+        const { currentPassword, newPassword } = req.body;
+        
+        // Verify current password
+        const isCurrentPasswordValid = await comparePasswords(
+          currentPassword, 
+          req.user.password
+        );
+        
+        if (!isCurrentPasswordValid) {
+          return res.status(400).json({ message: "Current password is incorrect" });
+        }
+        
+        // Hash the new password
+        updateData.password = await hashPassword(newPassword);
+      }
+      
+      // Update user if there are fields to update
+      if (Object.keys(updateData).length > 0) {
+        const updatedUser = await storage.updateUser(req.user.id, updateData);
+        
+        if (!updatedUser) {
+          return res.status(500).json({ message: "Failed to update profile" });
+        }
+        
+        // Return user data without sensitive information
+        const { password, ...userData } = updatedUser;
+        res.json(userData);
+      } else {
+        res.status(400).json({ message: "No valid fields to update" });
+      }
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Update notification settings
+  app.patch("/api/user/notifications", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      // Only allow updating notification settings
+      const allowedFields = ['emailReminders', 'weeklySummary', 'goalAchievement', 'reminderTime'];
+      const updateData: Record<string, any> = {};
+      
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      }
+      
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No valid notification settings to update" });
+      }
+      
+      // Update user notification settings
+      const updatedUser = await storage.updateUser(req.user.id, updateData);
+      
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update notification settings" });
+      }
+      
+      // Return updated notification settings
+      const notificationSettings = {
+        emailReminders: updatedUser.emailReminders,
+        weeklySummary: updatedUser.weeklySummary,
+        goalAchievement: updatedUser.goalAchievement,
+        reminderTime: updatedUser.reminderTime
+      };
+      
+      res.json(notificationSettings);
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      res.status(500).json({ message: "Failed to update notification settings" });
+    }
+  });
 
   // Get categories for the current user
   app.get("/api/categories", async (req, res) => {
@@ -220,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const healthBalance = calculateHealthBalance(timeRecords, habitRecords);
       
       // Calculate unaccounted minutes (total minutes in day minus allocated minutes)
-      const totalSpentMinutes = timeRecords.reduce((sum, record) => sum + (record.minutes || 0), 0);
+      const totalSpentMinutes = timeRecords.reduce((sum: number, record: any) => sum + (record.minutes || 0), 0);
       const unaccountedMinutes = Math.max(0, 1440 - totalSpentMinutes);
       
       if (!entry) {
