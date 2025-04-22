@@ -8,10 +8,13 @@ import { format, subDays, eachDayOfInterval } from "date-fns";
 import { Loader2 } from "lucide-react";
 import DailyEntryForm from "@/components/daily-entry-form";
 import { CategoryWithSubcategories } from "@shared/schema";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function HistoryPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isEntryFormOpen, setIsEntryFormOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("calendar"); // For mobile view: calendar, charts
+  const isMobile = useIsMobile();
 
   // Fetch categories for the current user
   const { data: categories, isLoading: loadingCategories } = useQuery<CategoryWithSubcategories[]>({
@@ -76,165 +79,200 @@ export default function HistoryPage() {
     );
   }
 
-  return (
-    <div className="py-6 px-4 md:px-6">
-      <h1 className="text-3xl font-bold mb-6">History & Reports</h1>
+  // Mobile tab navigation render
+  const renderMobileTabs = () => (
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mb-4">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="calendar">Calendar</TabsTrigger>
+        <TabsTrigger value="charts">Reports</TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+
+  // Calendar and summary section
+  const renderCalendarAndSummary = () => (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>Select Date</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={handleDateChange}
+            className="rounded-md border w-full"
+          />
+        </CardContent>
+      </Card>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar Column */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Date</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateChange}
-                className="rounded-md border w-full"
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>Daily Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="font-medium mb-2 text-sm sm:text-base">{format(selectedDate, "MMMM d, yyyy")}</p>
+          {selectedDayEntry ? (
+            <ul className="space-y-3">
+              <li className="flex justify-between items-center border-b pb-2">
+                <span className="text-muted-foreground text-sm sm:text-base">Daily Score</span>
+                <span className="font-medium">{selectedDayEntry.dailyScore}%</span>
+              </li>
+              <li className="flex justify-between items-center border-b pb-2">
+                <span className="text-muted-foreground text-sm sm:text-base">Motivation</span>
+                <span className="font-medium">{selectedDayEntry.motivationLevel}%</span>
+              </li>
+              <li className="flex justify-between items-center border-b pb-2">
+                <span className="text-muted-foreground text-sm sm:text-base">Health Balance</span>
+                <span className="font-medium">{selectedDayEntry.healthBalance}%</span>
+              </li>
+              <li className="flex justify-between items-center pb-2">
+                <span className="text-muted-foreground text-sm sm:text-base">Sleep</span>
+                <span className="font-medium">{selectedDayEntry.sleepHours} hours</span>
+              </li>
+            </ul>
+          ) : (
+            <p className="text-muted-foreground italic text-sm">No data for this date</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // Charts section
+  const renderCharts = () => (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>Performance Trends</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="dailyScore" className="w-full">
+            <TabsList className="w-full flex overflow-x-auto mb-4">
+              <TabsTrigger value="dailyScore" className="flex-1 text-xs sm:text-sm">Daily Score</TabsTrigger>
+              <TabsTrigger value="motivation" className="flex-1 text-xs sm:text-sm">Motivation</TabsTrigger>
+              <TabsTrigger value="health" className="flex-1 text-xs sm:text-sm">Health</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="dailyScore">
+              <ResponsiveContainer width="100%" height={isMobile ? 200 : 300}>
+                <LineChart data={historyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip 
+                    formatter={(value) => [`${value}%`, 'Daily Score']}
+                    labelFormatter={(label) => `Date: ${label}`} 
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="dailyScore"
+                    stroke="#8884d8"
+                    strokeWidth={2}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </TabsContent>
+            
+            <TabsContent value="motivation">
+              <ResponsiveContainer width="100%" height={isMobile ? 200 : 300}>
+                <LineChart data={historyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip 
+                    formatter={(value) => [`${value}%`, 'Motivation']}
+                    labelFormatter={(label) => `Date: ${label}`} 
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="motivationLevel"
+                    stroke="#ff6b6b"
+                    strokeWidth={2}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </TabsContent>
+            
+            <TabsContent value="health">
+              <ResponsiveContainer width="100%" height={isMobile ? 200 : 300}>
+                <LineChart data={historyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip 
+                    formatter={(value) => [`${value}%`, 'Health Balance']}
+                    labelFormatter={(label) => `Date: ${label}`} 
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="healthBalance"
+                    stroke="#4bc0c0"
+                    strokeWidth={2}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>Category Performance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={isMobile ? 200 : 300}>
+            <BarChart data={categories?.map((cat: CategoryWithSubcategories) => ({
+              name: cat.name,
+              progress: (cat as any).progress || 0,
+              color: cat.color
+            }))}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis domain={[0, 100]} />
+              <Tooltip 
+                formatter={(value) => [`${value}%`, 'Progress']}
+                labelFormatter={(label) => `Category: ${label}`} 
               />
-            </CardContent>
-          </Card>
+              <Bar 
+                dataKey="progress" 
+                fill="#8884d8" 
+                radius={[4, 4, 0, 0]}
+                barSize={isMobile ? 25 : 40}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
+    <div className="p-4 sm:py-6 sm:px-6">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">History & Reports</h1>
+      
+      {isMobile ? (
+        <>
+          {renderMobileTabs()}
+          {activeTab === "calendar" ? renderCalendarAndSummary() : renderCharts()}
+        </>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Calendar Column */}
+          <div className="lg:col-span-1 space-y-6">
+            {renderCalendarAndSummary()}
+          </div>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>Daily Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-medium mb-2">{format(selectedDate, "MMMM d, yyyy")}</p>
-              {selectedDayEntry ? (
-                <ul className="space-y-3">
-                  <li className="flex justify-between items-center border-b pb-2">
-                    <span className="text-muted-foreground">Daily Score</span>
-                    <span className="font-medium">{selectedDayEntry.dailyScore}%</span>
-                  </li>
-                  <li className="flex justify-between items-center border-b pb-2">
-                    <span className="text-muted-foreground">Motivation</span>
-                    <span className="font-medium">{selectedDayEntry.motivationLevel}%</span>
-                  </li>
-                  <li className="flex justify-between items-center border-b pb-2">
-                    <span className="text-muted-foreground">Health Balance</span>
-                    <span className="font-medium">{selectedDayEntry.healthBalance}%</span>
-                  </li>
-                  <li className="flex justify-between items-center pb-2">
-                    <span className="text-muted-foreground">Sleep</span>
-                    <span className="font-medium">{selectedDayEntry.sleepHours} hours</span>
-                  </li>
-                </ul>
-              ) : (
-                <p className="text-muted-foreground italic">No data for this date</p>
-              )}
-            </CardContent>
-          </Card>
+          {/* Reports Column */}
+          <div className="lg:col-span-2">
+            {renderCharts()}
+          </div>
         </div>
-        
-        {/* Reports Column */}
-        <div className="lg:col-span-2">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Performance Trends</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="dailyScore" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-4">
-                  <TabsTrigger value="dailyScore">Daily Score</TabsTrigger>
-                  <TabsTrigger value="motivation">Motivation</TabsTrigger>
-                  <TabsTrigger value="health">Health</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="dailyScore">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={historyData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip 
-                        formatter={(value) => [`${value}%`, 'Daily Score']}
-                        labelFormatter={(label) => `Date: ${label}`} 
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="dailyScore"
-                        stroke="#8884d8"
-                        strokeWidth={2}
-                        activeDot={{ r: 8 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </TabsContent>
-                
-                <TabsContent value="motivation">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={historyData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip 
-                        formatter={(value) => [`${value}%`, 'Motivation']}
-                        labelFormatter={(label) => `Date: ${label}`} 
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="motivationLevel"
-                        stroke="#ff6b6b"
-                        strokeWidth={2}
-                        activeDot={{ r: 8 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </TabsContent>
-                
-                <TabsContent value="health">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={historyData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip 
-                        formatter={(value) => [`${value}%`, 'Health Balance']}
-                        labelFormatter={(label) => `Date: ${label}`} 
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="healthBalance"
-                        stroke="#4bc0c0"
-                        strokeWidth={2}
-                        activeDot={{ r: 8 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </TabsContent>
-              </Tabs>
-              
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-4">Category Performance</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={categories?.map((cat: CategoryWithSubcategories) => ({
-                    name: cat.name,
-                    progress: (cat as any).progress || 0,
-                    color: cat.color
-                  }))}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip 
-                      formatter={(value) => [`${value}%`, 'Progress']}
-                      labelFormatter={(label) => `Category: ${label}`} 
-                    />
-                    <Bar 
-                      dataKey="progress" 
-                      fill="#8884d8" 
-                      radius={[4, 4, 0, 0]}
-                      barSize={40}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      )}
       
       {/* Daily Entry Form */}
       {categories && (
