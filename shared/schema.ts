@@ -95,7 +95,9 @@ export const defaultCategories = [
     name: "Faith",
     color: "#16A34A",
     icon: "pray",
-    goalHours: 10,
+    goalHours: 1, // Daily goal of 1 hour
+    monthlyGoalHours: 30, // Monthly goal of 30 hours
+    goalPeriod: "monthly", // Use monthly goal period by default
     subcategories: [
       { name: "Daily Prayer", goalMinutes: 30, goalType: "time" },
       { name: "Meditation", goalMinutes: 20, goalType: "time" },
