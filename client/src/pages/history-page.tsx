@@ -7,13 +7,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, subDays, eachDayOfInterval } from "date-fns";
 import { Loader2 } from "lucide-react";
 import DailyEntryForm from "@/components/daily-entry-form";
+import { CategoryWithSubcategories } from "@shared/schema";
 
 export default function HistoryPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isEntryFormOpen, setIsEntryFormOpen] = useState(false);
 
   // Fetch categories for the current user
-  const { data: categories, isLoading: loadingCategories } = useQuery({
+  const { data: categories, isLoading: loadingCategories } = useQuery<CategoryWithSubcategories[]>({
     queryKey: ["/api/categories"],
     queryFn: async () => {
       const res = await fetch("/api/categories");
@@ -76,7 +77,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="container py-6 px-4 md:px-6">
+    <div className="py-6 px-4 md:px-6">
       <h1 className="text-3xl font-bold mb-6">History & Reports</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -209,9 +210,9 @@ export default function HistoryPage() {
               <div className="mt-6">
                 <h3 className="text-lg font-medium mb-4">Category Performance</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={categories?.map(cat => ({
+                  <BarChart data={categories?.map((cat: CategoryWithSubcategories) => ({
                     name: cat.name,
-                    progress: cat.progress || 0,
+                    progress: (cat as any).progress || 0,
                     color: cat.color
                   }))}>
                     <CartesianGrid strokeDasharray="3 3" />
