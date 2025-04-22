@@ -36,6 +36,13 @@ export default function Dashboard() {
   const { data: dashboardData, isLoading, refetch: refetchDashboard } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard', user?.id, date.toISOString().split('T')[0]],
     enabled: !!user,
+    // Refresh data every 5 seconds when the page is visible
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    // Force always fresh data
+    staleTime: 0,
   });
   
   const handlePrevDay = () => {
