@@ -114,14 +114,26 @@ function CategorySettings() {
   const createSubcategoryMutation = useMutation({
     mutationFn: async (subcategory: any) => {
       console.log("Sending subcategory creation request:", subcategory);
-      const res = await apiRequest("POST", "/api/subcategories", subcategory);
+      
+      // Ensure goalMinutes is a number for time-based subcategories
+      const payload = {
+        ...subcategory,
+        goalMinutes: subcategory.goalType === "time" 
+          ? (parseInt(subcategory.goalMinutes) || 0) 
+          : 0
+      };
+      
+      console.log("Final subcategory creation payload:", payload);
+      
+      const res = await apiRequest("POST", "/api/subcategories", payload);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to create subcategory");
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Subcategory creation successful:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
       // Also invalidate dashboard to reflect the changes there
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
@@ -172,14 +184,26 @@ function CategorySettings() {
   const updateSubcategoryMutation = useMutation({
     mutationFn: async (updatedSubcategory: any) => {
       console.log("Sending subcategory update request:", updatedSubcategory);
-      const res = await apiRequest("PATCH", `/api/subcategories/${updatedSubcategory.id}`, updatedSubcategory);
+      
+      // Ensure goalMinutes is a number for time-based subcategories
+      const payload = {
+        ...updatedSubcategory,
+        goalMinutes: updatedSubcategory.goalType === "time" 
+          ? (parseInt(updatedSubcategory.goalMinutes) || 0) 
+          : 0
+      };
+      
+      console.log("Final subcategory update payload:", payload);
+      
+      const res = await apiRequest("PATCH", `/api/subcategories/${updatedSubcategory.id}`, payload);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to update subcategory");
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Subcategory update successful:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
       // Also invalidate dashboard to reflect the changes there
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
