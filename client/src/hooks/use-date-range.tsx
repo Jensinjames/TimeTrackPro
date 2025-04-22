@@ -83,10 +83,13 @@ export function DateRangeProvider({ children }: { children: ReactNode }) {
   const setDateRange = (range: DateRange | undefined) => {
     setDateRangeState(range);
     
-    if (range?.from && range?.to) {
+    if (range && range.from && range.to) {
+      const from = range.from;
+      const to = range.to;
+      
       setParams((params) => {
-        params.set("from", range.from.toISOString());
-        params.set("to", range.to.toISOString());
+        params.set("from", from.toISOString());
+        params.set("to", to.toISOString());
         
         if (selectedPreset) {
           params.set("preset", selectedPreset.toString());

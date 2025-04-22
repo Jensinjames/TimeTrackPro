@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useDateRange } from "@/hooks/use-date-range";
 import { CategoryWithSubcategories, DashboardData } from "@shared/schema";
 import { formatHours, formatPercent } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 
 import SummaryCard from "./summary-card";
@@ -25,6 +27,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { dateRange, setDateRange } = useDateRange();
   
   // Fetch categories to ensure we have the latest data
   const { data: categoriesData } = useQuery<CategoryWithSubcategories[]>({
@@ -32,9 +35,31 @@ export default function Dashboard() {
     enabled: !!user,
   });
   
-  // Fetch dashboard data
+  // Fetch dashboard data - use date range if available
   const { data: dashboardData, isLoading, refetch: refetchDashboard } = useQuery<DashboardData>({
-    queryKey: ['/api/dashboard', user?.id, date.toISOString().split('T')[0]],
+    queryKey: [
+      '/api/dashboard', 
+      user?.id, 
+      dateRange?.from?.toISOString() || null,
+      dateRange?.to?.toISOString() || date.toISOString().split('T')[0]
+    ],
+    queryFn: async () => {
+      // Build URL with date range if available
+      let url = '/api/dashboard';
+      const params = new URLSearchParams();
+      
+      if (dateRange && dateRange.from && dateRange.to) {
+        params.set('from', dateRange.from.toISOString());
+        params.set('to', dateRange.to.toISOString());
+      } else {
+        params.set('date', date.toISOString());
+      }
+      
+      url = `${url}?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch dashboard data');
+      return res.json();
+    },
     enabled: !!user,
     // Refresh data every 5 seconds when the page is visible
     refetchInterval: 5000,
@@ -45,22 +70,49 @@ export default function Dashboard() {
     staleTime: 0,
   });
   
+  // Effect to clear single-day date when date range is active
+  useEffect(() => {
+    if (dateRange?.from && dateRange?.to) {
+      // Clear out the calendar state since we're using date range
+      setShowCalendar(false);
+    }
+  }, [dateRange]);
+  
   const handlePrevDay = () => {
     const newDate = new Date(date);
     newDate.setDate(newDate.getDate() - 1);
     setDate(newDate);
+    
+    // Clear any active date range
+    setDateRange(undefined);
   };
   
   const handleNextDay = () => {
     const newDate = new Date(date);
     newDate.setDate(newDate.getDate() + 1);
     setDate(newDate);
+    
+    // Clear any active date range
+    setDateRange(undefined);
   };
   
   const handleDateSelect = (newDate: Date | undefined) => {
     if (newDate) {
       setDate(newDate);
       setShowCalendar(false);
+      
+      // Clear any active date range
+      setDateRange(undefined);
+    }
+  };
+  
+  // Handler for date range selection
+  const handleDateRangeChange = (range: any) => {
+    setDateRange(range);
+    
+    // If a single date is selected in the range, update the current date
+    if (range && range.from && !range.to) {
+      setDate(range.from);
     }
   };
   
@@ -147,29 +199,42 @@ export default function Dashboard() {
   
   const renderDateControls = () => (
     <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-      <div className="flex items-center space-x-2 sm:space-x-4">
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={handlePrevDay}
-          className="h-8 w-8 sm:h-9 sm:w-9"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div 
-          className="font-medium cursor-pointer text-sm sm:text-base" 
-          onClick={() => setShowCalendar(!showCalendar)}
-        >
-          {dateStr}
-        </div>
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={handleNextDay}
-          className="h-8 w-8 sm:h-9 sm:w-9"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+      <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full md:w-auto">
+        {/* Date Range Picker - Global Filter */}
+        <DateRangePicker
+          value={dateRange}
+          onChange={handleDateRangeChange}
+          className="w-full md:w-auto"
+          presets={[7, 30, 90, 180, 365, 1095]}
+        />
+        
+        {/* Daily Navigation - only visible when no date range is active */}
+        {!dateRange?.from && (
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handlePrevDay}
+              className="h-8 w-8 sm:h-9 sm:w-9"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div 
+              className="font-medium cursor-pointer text-sm sm:text-base" 
+              onClick={() => setShowCalendar(!showCalendar)}
+            >
+              {dateStr}
+            </div>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleNextDay}
+              className="h-8 w-8 sm:h-9 sm:w-9"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
       
       <div className="flex items-center space-x-2 w-full sm:w-auto">
