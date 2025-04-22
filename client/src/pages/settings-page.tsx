@@ -143,6 +143,7 @@ function CategorySettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({
         title: "Category updated",
         description: "Category has been updated successfully",
@@ -193,6 +194,28 @@ function CategorySettings() {
     onError: (error) => {
       toast({
         title: "Failed to delete subcategory",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/categories/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setActiveCategory(null);
+      toast({
+        title: "Category deleted",
+        description: "Category has been deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to delete category",
         description: error.message,
         variant: "destructive",
       });
@@ -443,13 +466,29 @@ function CategorySettings() {
                   </div>
                 </div>
                 
-                <Button 
-                  onClick={() => updateCategoryMutation.mutate(activeCategory)}
-                  disabled={updateCategoryMutation.isPending}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Category
-                </Button>
+                <div className="flex justify-between">
+                  <Button 
+                    onClick={() => updateCategoryMutation.mutate(activeCategory)}
+                    disabled={updateCategoryMutation.isPending}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Category
+                  </Button>
+                  
+                  <Button 
+                    variant="destructive"
+                    onClick={() => {
+                      // Confirm before deleting
+                      if (window.confirm(`Are you sure you want to delete the category "${activeCategory.name}" and all its subcategories?`)) {
+                        deleteCategoryMutation.mutate(activeCategory.id);
+                      }
+                    }}
+                    disabled={deleteCategoryMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Category
+                  </Button>
+                </div>
               </div>
               
               <Separator />
