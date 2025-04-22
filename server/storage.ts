@@ -1,4 +1,4 @@
-import { users, categories, subcategories, dailyEntries, timeRecords, habitRecords } from "@shared/schema";
+import { users, categories, subcategories, dailyEntries, timeRecords, habitRecords, defaultCategories } from "@shared/schema";
 import type {
   User,
   InsertUser,
@@ -13,8 +13,7 @@ import type {
   HabitRecord,
   InsertHabitRecord,
   CategoryWithSubcategories,
-  DailyEntryWithDetails,
-  defaultCategories
+  DailyEntryWithDetails
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
