@@ -227,18 +227,41 @@ export default function DailyEntryForm({
   };
   
   // Handle form submission
-  const onSubmit = (values: DailyEntryFormValues) => {
-    const payload = {
-      ...values,
-      userId: user?.id || 0,
-      // Ensure date is in the correct format
-      date: selectedDate,
-    };
-    
-    if (isEditMode) {
-      updateDailyEntryMutation.mutate(payload);
-    } else {
-      createDailyEntryMutation.mutate(payload);
+  const onSubmit = async (values: DailyEntryFormValues) => {
+    try {
+      // First, create or update the daily entry
+      const payload = {
+        ...values,
+        userId: user?.id || 0,
+        // Ensure date is in the correct format
+        date: selectedDate,
+        // Include time and habit records
+        timeRecords: Object.entries(timeRecords).map(([subcategoryId, hours]) => ({
+          subcategoryId: parseInt(subcategoryId),
+          minutes: Math.round(hours * 60) // Convert hours to minutes
+        })),
+        habitRecords: Object.entries(habitRecords).map(([subcategoryId, completed]) => ({
+          subcategoryId: parseInt(subcategoryId),
+          completed
+        }))
+      };
+      
+      // Submit the daily entry data
+      let dailyEntry;
+      if (isEditMode) {
+        dailyEntry = await updateDailyEntryMutation.mutateAsync(payload);
+      } else {
+        dailyEntry = await createDailyEntryMutation.mutateAsync(payload);
+      }
+      
+      // Update dashboard data
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/entries'] });
+      
+      // Close the form
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to save daily entry:", error);
     }
   };
 

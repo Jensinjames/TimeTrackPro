@@ -219,14 +219,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Process time records
-      if (timeRecords && Array.isArray(timeRecords)) {
+      if (timeRecords && Array.isArray(timeRecords) && entry) {
         for (const record of timeRecords) {
-          await storage.updateTimeRecord(entry.id, record.subcategoryId, record.minutes);
+          if (record.minutes > 0) {
+            await storage.updateTimeRecord(entry.id, record.subcategoryId, record.minutes);
+          }
         }
       }
       
       // Process habit records
-      if (habitRecords && Array.isArray(habitRecords)) {
+      if (habitRecords && Array.isArray(habitRecords) && entry) {
         for (const record of habitRecords) {
           await storage.updateHabitRecord(entry.id, record.subcategoryId, record.completed);
         }
