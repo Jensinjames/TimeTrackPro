@@ -26,7 +26,10 @@ export default function CategoryCard({
   onClick,
   isSelected = false,
 }: CategoryCardProps) {
-  const colorStyle = categoryColors[color] || categoryColors.blue;
+  // Handle both named colors and hex codes
+  const colorStyle = categoryColors[color] || 
+                    (color && color.startsWith('#') ? categoryColors[color] : null) || 
+                    categoryColors.blue;
   const iconClass = getCategoryIcon(icon);
   
   return (

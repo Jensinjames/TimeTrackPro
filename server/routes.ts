@@ -425,7 +425,7 @@ function calculateDailyScore(timeRecords: any[], habitRecords: any[]): number {
     }
     
     // Calculate achievement levels relative to goals
-    for (const [_, data] of recordsBySubcategory.entries()) {
+    recordsBySubcategory.forEach((data) => {
       // Don't let overachievement in one category completely mask underachievement in others
       const completionRatio = Math.min(data.minutes / data.goalMinutes, 1.5);
       
@@ -438,7 +438,7 @@ function calculateDailyScore(timeRecords: any[], habitRecords: any[]): number {
       }
       
       timeScore += (completionRatio * data.goalMinutes * categoryWeight);
-    }
+    });
   }
   
   // Habit records contribution
@@ -467,7 +467,7 @@ function calculateDailyScore(timeRecords: any[], habitRecords: any[]): number {
     }
     
     // Calculate weighted habit score
-    for (const [category, data] of habitsByCategory.entries()) {
+    habitsByCategory.forEach((data, category) => {
       let categoryWeight = 1.0;
       
       // Adjust weight based on category importance
@@ -480,7 +480,7 @@ function calculateDailyScore(timeRecords: any[], habitRecords: any[]): number {
       const categoryCompletionRatio = data.completed / data.total;
       habitScore += (categoryCompletionRatio * data.total * categoryWeight);
       habitTotal += data.total;
-    }
+    });
   }
   
   // Combine scores with diminishing returns for very high achievements
@@ -538,7 +538,7 @@ function calculateMotivationLevel(timeRecords: any[], habitRecords: any[]): numb
     }
     
     // Calculate energy score based on category balance
-    for (const [category, data] of categoryTotals.entries()) {
+    categoryTotals.forEach((data, category) => {
       const completionRatio = data.minutes / data.goal;
       
       if (energizingCategories.includes(category)) {
@@ -559,7 +559,7 @@ function calculateMotivationLevel(timeRecords: any[], habitRecords: any[]): numb
       }
       
       energyTotal += data.goal;
-    }
+    });
   }
   
   // Habit records contribution - focus on consistency
@@ -587,7 +587,7 @@ function calculateMotivationLevel(timeRecords: any[], habitRecords: any[]): numb
     }
     
     // Calculate habit motivation contribution
-    for (const [category, data] of habitsByCategory.entries()) {
+    habitsByCategory.forEach((data, category) => {
       let multiplier = 1.0;
       
       if (energizingCategories.includes(category)) {
@@ -597,7 +597,7 @@ function calculateMotivationLevel(timeRecords: any[], habitRecords: any[]): numb
       const completionRatio = data.completed / data.total;
       habitScore += completionRatio * data.total * multiplier;
       habitTotal += data.total;
-    }
+    });
   }
   
   // Combine scores with emphasis on energizing activities
