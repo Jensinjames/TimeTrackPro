@@ -51,7 +51,9 @@ export default function CategoryCard({
             <div>
               <h3 className="font-medium text-lg">{name}</h3>
               <p className="text-sm text-gray-500">
-                {actualHours.toFixed(1)} / {goalHours} hrs
+                {actualHours.toFixed(1)} / {goalPeriod === 'monthly' ? 
+                  (monthlyGoalHours || goalHours * 30).toFixed(0) + ' hrs/month' : 
+                  goalHours + ' hrs/day'}
               </p>
             </div>
             <div className={`
@@ -73,6 +75,11 @@ export default function CategoryCard({
               // Use className for styling directly without custom props
               // that aren't supported by the component
             />
+            {goalPeriod === 'monthly' && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-2">
+                Monthly Goal
+              </span>
+            )}
           </div>
         </div>
       </CardContent>
