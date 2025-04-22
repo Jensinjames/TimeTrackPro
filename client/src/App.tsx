@@ -10,6 +10,7 @@ import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import SettingsPage from "@/pages/settings-page";
 import HistoryPage from "@/pages/history-page";
+import TestAuthPage from "@/pages/test-auth";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/sidebar";
 
@@ -17,6 +18,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <Route path="/test-auth" component={TestAuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/history" component={HistoryPage} />
@@ -29,8 +31,8 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const isMobile = useIsMobile();
   
-  // Don't show the sidebar on the auth page
-  if (location === "/auth") {
+  // Don't show the sidebar on auth pages
+  if (location === "/auth" || location === "/test-auth") {
     return <>{children}</>;
   }
   
