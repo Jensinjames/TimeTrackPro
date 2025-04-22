@@ -200,6 +200,31 @@ export const categoryColors: Record<string, {
     text: "text-gray-500",
     light: "bg-gray-100",
     ring: "ring-gray-500"
+  },
+  // Map hex colors with similar Tailwind colors
+  "#16A34A": {
+    bg: "bg-green-600",
+    text: "text-green-600",
+    light: "bg-green-100",
+    ring: "ring-green-600"
+  },
+  "#D97706": {
+    bg: "bg-amber-600",
+    text: "text-amber-600",
+    light: "bg-amber-100",
+    ring: "ring-amber-600"
+  },
+  "#DC2626": {
+    bg: "bg-red-600",
+    text: "text-red-600",
+    light: "bg-red-100",
+    ring: "ring-red-600"
+  },
+  "#EC4899": {
+    bg: "bg-pink-600",
+    text: "text-pink-600",
+    light: "bg-pink-100",
+    ring: "ring-pink-600"
   }
 };
 
