@@ -10,6 +10,9 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name"),
   emailReminders: boolean("email_reminders").default(true),
+  weeklySummary: boolean("weekly_summary").default(true),
+  goalAchievement: boolean("goal_achievement").default(true),
+  reminderTime: text("reminder_time").default("18:00"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -18,6 +21,9 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   name: true,
   emailReminders: true,
+  weeklySummary: true,
+  goalAchievement: true,
+  reminderTime: true,
 });
 
 // Categories schema
