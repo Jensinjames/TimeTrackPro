@@ -199,6 +199,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const motivationLevel = calculateMotivationLevel(timeRecords, habitRecords);
       const healthBalance = calculateHealthBalance(timeRecords, habitRecords);
       
+      // Calculate unaccounted minutes (total minutes in day minus allocated minutes)
+      const totalSpentMinutes = timeRecords.reduce((sum, record) => sum + (record.minutes || 0), 0);
+      const unaccountedMinutes = Math.max(0, 1440 - totalSpentMinutes);
+      
       if (!entry) {
         // Create new entry
         entry = await storage.createDailyEntry({
@@ -207,7 +211,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sleepHours: sleepHours || 0,
           dailyScore,
           motivationLevel,
-          healthBalance
+          healthBalance,
+          unaccountedMinutes
         });
       } else {
         // Update existing entry
@@ -215,7 +220,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sleepHours: sleepHours || 0,
           dailyScore,
           motivationLevel,
-          healthBalance
+          healthBalance,
+          unaccountedMinutes
         });
       }
       
@@ -267,6 +273,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Process entries to create time allocation data
           const timeAllocationData = await generateTimeAllocationData(categories, entries as DailyEntryWithDetails[]);
+          
+          // Add any unaccounted minutes from all entries
+          if (timeAllocationData.unaccountedMinutes === undefined) {
+            timeAllocationData.unaccountedMinutes = entries.reduce((sum, entry) => 
+              sum + (entry.unaccountedMinutes || 0), 0);
+          }
+          
           res.json(timeAllocationData);
           return;
         }
@@ -293,6 +306,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   // Create a single-entry array for our generator function
           const entries = entry ? [entry as DailyEntryWithDetails] : [];
           const timeAllocationData = await generateTimeAllocationData(categories, entries);
+          
+          // Add unaccounted minutes from the entry if it exists
+          if (timeAllocationData.unaccountedMinutes === undefined && entry?.unaccountedMinutes) {
+            timeAllocationData.unaccountedMinutes = entry.unaccountedMinutes;
+          }
+          
           res.json(timeAllocationData);
           return;
         }
