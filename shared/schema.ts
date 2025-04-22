@@ -29,7 +29,7 @@ export const categories = pgTable("categories", {
   icon: text("icon").notNull(),
   goalHours: real("goal_hours").notNull(), // Daily goal hours
   monthlyGoalHours: real("monthly_goal_hours").notNull().default(0), // Monthly goal hours
-  goalPeriod: text("goal_period").notNull().default("daily"), // "daily" or "monthly"
+  goalPeriod: text("goal_period").notNull().default("daily"), // Goal period type: 'daily' or 'monthly'
   order: integer("order").notNull().default(0),
 });
 
@@ -108,7 +108,9 @@ export const defaultCategories = [
     name: "Life",
     color: "#D97706",
     icon: "sun",
-    goalHours: 20,
+    goalHours: 2,
+    monthlyGoalHours: 60,
+    goalPeriod: "daily",
     subcategories: [
       { name: "Family Time", goalMinutes: 180, goalType: "time" },
       { name: "Social Activities", goalMinutes: 360, goalType: "time" },
