@@ -8,6 +8,17 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+// Define a proper type for the category
+interface CategoryFormData {
+  id?: number;
+  name: string;
+  icon: string;
+  color: string;
+  goalHours: number;
+  goalPeriod?: 'daily' | 'monthly';
+  [key: string]: any; // Allow additional properties
+}
+
 // Hour options for dropdown selection
 const hourOptions = [
   { value: "0.25", label: "15 min" },
@@ -28,7 +39,7 @@ const hourOptions = [
 ];
 
 // Default initial category state
-const defaultCategory = {
+const defaultCategory: CategoryFormData = {
   name: "",
   icon: "sun",
   color: "#3b82f6",
@@ -37,9 +48,9 @@ const defaultCategory = {
 };
 
 interface CategoryFormProps {
-  category?: any; // The category to edit, undefined for new category
+  category?: CategoryFormData; // The category to edit, undefined for new category
   onClose: () => void;
-  onSuccess?: (category: any) => void;
+  onSuccess?: (category: CategoryFormData) => void;
   isNew?: boolean;
 }
 
@@ -53,10 +64,10 @@ function CategoryForm({
   const queryClient = useQueryClient();
   
   // Initialize with provided category or default values
-  const [category, setCategory] = useState(initialCategory || {...defaultCategory});
+  const [category, setCategory] = useState<CategoryFormData>(initialCategory || {...defaultCategory});
   
   // Debounce category changes to reduce renders
-  const debouncedCategory = useDebounce(category, 100);
+  const debouncedCategory = useDebounce<CategoryFormData>(category, 100);
   
   // Update local state if initialCategory changes externally
   useEffect(() => {
@@ -67,7 +78,7 @@ function CategoryForm({
   
   // Create category mutation
   const createCategoryMutation = useMutation({
-    mutationFn: async (categoryData: any) => {
+    mutationFn: async (categoryData: CategoryFormData) => {
       const res = await apiRequest("POST", "/api/categories", categoryData);
       if (!res.ok) {
         const errorData = await res.json();
@@ -98,7 +109,7 @@ function CategoryForm({
   
   // Update category mutation
   const updateCategoryMutation = useMutation({
-    mutationFn: async (categoryData: any) => {
+    mutationFn: async (categoryData: CategoryFormData) => {
       const res = await apiRequest("PATCH", `/api/categories/${categoryData.id}`, {
         name: categoryData.name,
         icon: categoryData.icon,
@@ -139,7 +150,7 @@ function CategoryForm({
 
   // Handle input change
   const handleInputChange = (field: string, value: any) => {
-    setCategory(prev => ({
+    setCategory((prev: CategoryFormData) => ({
       ...prev,
       [field]: value
     }));

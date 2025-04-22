@@ -8,6 +8,17 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+// Define a proper type for the subcategory
+interface SubcategoryFormData {
+  id?: number;
+  name: string;
+  goalType: 'time' | 'habit' | 'boolean';
+  goalHours?: number;
+  goalMinutes?: number;
+  categoryId: number;
+  [key: string]: any; // Allow additional properties
+}
+
 const hourOptions = [
   { value: "0.25", label: "15 min" },
   { value: "0.5", label: "30 min" },
@@ -27,7 +38,7 @@ const hourOptions = [
 ];
 
 interface SubcategoryFormProps {
-  subcategory: any;
+  subcategory: SubcategoryFormData;
   onClose: () => void;
   isNew?: boolean;
 }
@@ -37,10 +48,10 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   const queryClient = useQueryClient();
   
   // Local state for subcategory form
-  const [subcategory, setSubcategory] = useState(initialSubcategory);
+  const [subcategory, setSubcategory] = useState<SubcategoryFormData>(initialSubcategory);
   
   // Debounce changes to reduce renders
-  const debouncedSubcategory = useDebounce(subcategory, 100);
+  const debouncedSubcategory = useDebounce<SubcategoryFormData>(subcategory, 100);
   
   // Create subcategory mutation
   const createSubcategoryMutation = useMutation({
@@ -104,7 +115,7 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
 
   // Handle input change
   const handleInputChange = (field: string, value: any) => {
-    setSubcategory(prev => ({
+    setSubcategory((prev: SubcategoryFormData) => ({
       ...prev,
       [field]: value
     }));
