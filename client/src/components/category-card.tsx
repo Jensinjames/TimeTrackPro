@@ -1,5 +1,7 @@
-import { formatHours, formatPercent, getCategoryIcon, getCategoryColor } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { getCategoryIcon } from "@/lib/utils";
+import { categoryColors } from "@/lib/utils";
 
 interface CategoryCardProps {
   id: number;
@@ -22,38 +24,50 @@ export default function CategoryCard({
   actualHours,
   progress,
   onClick,
-  isSelected = false
+  isSelected = false,
 }: CategoryCardProps) {
-  const colorStyles = getCategoryColor(color);
+  const colorStyle = categoryColors[color] || categoryColors.blue;
+  const iconClass = getCategoryIcon(icon);
   
   return (
-    <div 
-      className={`rounded-lg transition-all cursor-pointer ${
-        isSelected 
-          ? `border-2 ${colorStyles.border} bg-white shadow-md`
-          : 'border border-gray-200 bg-white hover:shadow-sm'
-      }`}
+    <Card 
+      className={`
+        overflow-hidden cursor-pointer transition-all hover:shadow-md
+        ${isSelected ? `ring-2 ${colorStyle.ring}` : ''}
+      `}
       onClick={onClick}
     >
-      <div className="p-4">
-        <div className="flex items-center mb-4">
-          <div className={`h-10 w-10 rounded-full ${colorStyles.bg} flex items-center justify-center mr-3`}>
-            <i className={`${getCategoryIcon(icon)} text-white text-lg`}></i>
+      <CardContent className="p-0">
+        <div className={`${colorStyle.bg} h-2`}></div>
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="font-medium text-lg">{name}</h3>
+              <p className="text-sm text-gray-500">
+                {actualHours.toFixed(1)} / {goalHours} hrs
+              </p>
+            </div>
+            <div className={`
+              h-10 w-10 rounded-full ${colorStyle.light} 
+              flex items-center justify-center
+            `}>
+              <i className={`${iconClass} ${colorStyle.text}`}></i>
+            </div>
           </div>
-          <div>
-            <h3 className="font-medium text-gray-900">{name}</h3>
-            <p className="text-sm text-gray-500">{formatHours(actualHours)} / {formatHours(goalHours)}</p>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span>Progress</span>
+              <span className={colorStyle.text}>{Math.round(progress)}%</span>
+            </div>
+            <Progress 
+              value={progress} 
+              className="h-2" 
+              indicatorClassName={colorStyle.bg}
+            />
           </div>
         </div>
-        
-        <div className="mb-2">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-600">Progress</span>
-            <span className={`font-medium ${colorStyles.text}`}>{formatPercent(progress)}</span>
-          </div>
-          <Progress value={progress} className={`h-2 ${colorStyles.bg}`} />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

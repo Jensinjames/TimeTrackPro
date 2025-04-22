@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PlusCircle, Calendar, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { CategoryWithSubcategories, DashboardData } from "@shared/schema";
+import { formatHours, formatPercent } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+
 import SummaryCard from "./summary-card";
 import CategoryCard from "./category-card";
 import CategoryDetail from "./category-detail";
@@ -14,290 +17,297 @@ import DailyEntryForm from "./daily-entry-form";
 import CategoryForm from "./category-form";
 
 export default function Dashboard() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [isEntryFormOpen, setIsEntryFormOpen] = useState(false);
-  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [date, setDate] = useState(new Date());
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<(CategoryWithSubcategories & { actualHours: number; progress: number }) | null>(null);
+  const [dailyEntryOpen, setDailyEntryOpen] = useState(false);
+  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  const { user } = useAuth();
   const isMobile = useIsMobile();
   
-  const formattedDate = format(selectedDate, "EEEE, MMMM d, yyyy");
-  
-  // Fetch categories for the current user
-  const { data: categories, isLoading: loadingCategories } = useQuery({
-    queryKey: ["/api/categories"],
-    queryFn: async () => {
-      const res = await fetch("/api/categories");
-      if (!res.ok) throw new Error("Failed to fetch categories");
-      return res.json();
-    }
+  const { data: dashboardData, isLoading } = useQuery<DashboardData>({
+    queryKey: ['/api/dashboard', user?.id, date.toISOString().split('T')[0]],
+    enabled: !!user,
   });
   
-  // Fetch dashboard data for the selected date
-  const { data: dashboardData, isLoading: loadingDashboard } = useQuery({
-    queryKey: ["/api/dashboard", selectedDate.toISOString()],
-    queryFn: async () => {
-      const res = await fetch(`/api/dashboard?date=${selectedDate.toISOString()}`);
-      if (!res.ok) throw new Error("Failed to fetch dashboard data");
-      return res.json();
-    }
-  });
+  const handlePrevDay = () => {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() - 1);
+    setDate(newDate);
+  };
   
-  // Fetch the daily entry for the selected date
-  const { data: dailyEntry } = useQuery({
-    queryKey: ["/api/entries", selectedDate.toISOString()],
-    queryFn: async () => {
-      const res = await fetch(`/api/entries?date=${selectedDate.toISOString()}`);
-      if (!res.ok) throw new Error("Failed to fetch daily entry");
-      return res.json();
-    }
-  });
+  const handleNextDay = () => {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() + 1);
+    setDate(newDate);
+  };
   
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
+  const handleDateSelect = (newDate: Date | undefined) => {
+    if (newDate) {
+      setDate(newDate);
+      setShowCalendar(false);
     }
   };
   
-  const handleAddEntry = () => {
-    setIsEntryFormOpen(true);
+  const handleCategoryClick = (category: any) => {
+    setSelectedCategory(category);
   };
   
-  const handleAddCategory = () => {
-    setIsCategoryFormOpen(true);
+  const handleBackClick = () => {
+    setSelectedCategory(null);
   };
   
-  const handleCategoryClick = (categoryId: number) => {
-    setSelectedCategory(selectedCategory === categoryId ? null : categoryId);
+  const handleAddEntryClick = () => {
+    setDailyEntryOpen(true);
   };
   
-  // Loading state
-  if (loadingCategories || loadingDashboard) {
+  const handleAddCategoryClick = () => {
+    setCategoryFormOpen(true);
+  };
+  
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
   }
   
-  // Prepare data for category detail view
-  const getSelectedCategoryData = () => {
-    if (!selectedCategory || !dashboardData) return null;
-    
-    const category = dashboardData.categories.find((cat: any) => cat.id === selectedCategory);
-    if (!category) return null;
-    
-    // Calculate current reality
-    const timeRecords = dailyEntry?.timeRecords || [];
-    const categoryTimeRecords = timeRecords.filter(
-      (record: any) => record.subcategory.categoryId === selectedCategory
+  if (!dashboardData) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px] text-center">
+        <h3 className="font-semibold text-xl mb-4">No data available</h3>
+        <p className="text-gray-500 mb-6">Start tracking your time by adding a daily entry.</p>
+        <Button onClick={handleAddEntryClick}>Add Daily Entry</Button>
+      </div>
     );
-    
-    const currentReality = category.subcategories
-      .filter((sub: any) => sub.goalType === "time")
-      .map((sub: any) => {
-        const record = categoryTimeRecords.find(
-          (rec: any) => rec.subcategoryId === sub.id
-        );
-        const minutes = record ? record.minutes : 0;
-        return {
-          name: sub.name,
-          value: `${minutes / 60} hrs`
-        };
-      });
-    
-    // Calculate goals
-    const goals = category.subcategories
-      .filter((sub: any) => sub.goalType === "time")
-      .map((sub: any) => ({
-        name: sub.name,
-        value: `${sub.goalMinutes / 60} hrs`
-      }));
-    
-    return {
-      category,
-      currentReality,
-      goals
-    };
-  };
+  }
   
-  const selectedCategoryData = getSelectedCategoryData();
+  const { 
+    dailyScore, 
+    motivationLevel, 
+    sleepDuration, 
+    healthBalance, 
+    categories 
+  } = dashboardData;
   
-  return (
-    <div className="container py-6 px-4 md:px-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold mb-1">Dashboard</h1>
-          <div className="flex items-center">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" className="p-0 text-gray-600 font-normal">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {formattedDate}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <CalendarComponent
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+  const dateStr = date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+  
+  const renderMetrics = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <SummaryCard
+        title="Daily Score"
+        value={formatPercent(dailyScore)}
+        subtitle="Overall alignment with goals"
+        icon="fa-solid fa-chart-line"
+        color="blue"
+      />
+      <SummaryCard
+        title="Motivation Level"
+        value={formatPercent(motivationLevel)}
+        subtitle="Energy and focus today"
+        icon="fa-solid fa-bolt"
+        color="yellow"
+      />
+      <SummaryCard
+        title="Sleep Duration"
+        value={`${sleepDuration} hrs`}
+        subtitle="Last night's rest"
+        icon="fa-solid fa-moon"
+        color="purple"
+      />
+      <SummaryCard
+        title="Health Balance"
+        value={formatPercent(healthBalance)}
+        subtitle="Physical activity vs rest"
+        icon="fa-solid fa-heart"
+        color="green"
+      />
+    </div>
+  );
+  
+  const renderDateControls = () => (
+    <div className="mb-6 flex justify-between items-center">
+      <div className="flex items-center space-x-4">
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={handlePrevDay}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <div 
+          className="font-medium cursor-pointer" 
+          onClick={() => setShowCalendar(!showCalendar)}
+        >
+          {dateStr}
         </div>
-        
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button 
-            onClick={handleAddEntry} 
-            className="w-full sm:w-auto"
-          >
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Add Daily Entry
-          </Button>
-          <Button 
-            onClick={handleAddCategory} 
-            variant="outline"
-            className="w-full sm:w-auto"
-          >
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Add Category
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={handleNextDay}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
       
-      {dashboardData && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <SummaryCard 
-            title="Daily Score" 
-            value={`${dashboardData.dailyScore}%`}
-            subtitle="Overall Alignment"
-            icon="fa-solid fa-chart-line"
-            color="blue"
+      <div className="flex items-center space-x-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleAddCategoryClick}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Category
+        </Button>
+        <Button 
+          size="sm" 
+          onClick={handleAddEntryClick}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Entry
+        </Button>
+      </div>
+    </div>
+  );
+  
+  const renderCalendar = () => (
+    <div className={`relative ${showCalendar ? 'block' : 'hidden'}`}>
+      <Card className="absolute top-0 z-10 w-auto">
+        <CardContent className="p-0">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={handleDateSelect}
+            initialFocus
           />
-          <SummaryCard 
-            title="Motivation" 
-            value={`${dashboardData.motivationLevel}%`}
-            subtitle="Energy Level"
-            icon="fa-solid fa-bolt"
-            color="yellow"
-          />
-          <SummaryCard 
-            title="Sleep" 
-            value={`${dashboardData.sleepDuration} hrs`}
-            subtitle="Last Night"
-            icon="fa-solid fa-moon"
-            color="purple"
-          />
-          <SummaryCard 
-            title="Health Balance" 
-            value={`${dashboardData.healthBalance}%`}
-            subtitle="Health Habits"
-            icon="fa-solid fa-heart"
-            color="red"
-          />
-        </div>
-      )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+  
+  const renderCategoryList = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {categories.map((category) => (
+        <CategoryCard
+          key={category.id}
+          id={category.id}
+          name={category.name}
+          icon={category.icon}
+          color={category.color}
+          goalHours={category.goalHours}
+          actualHours={category.actualHours}
+          progress={category.progress}
+          onClick={() => handleCategoryClick(category)}
+        />
+      ))}
+    </div>
+  );
+  
+  const renderCategoryDetail = () => {
+    if (!selectedCategory) return null;
+    
+    const { 
+      name, 
+      icon, 
+      color, 
+      goalHours, 
+      actualHours, 
+      subcategories = [] 
+    } = selectedCategory;
+    
+    const currentReality = [
+      { name: "Time Spent", value: formatHours(actualHours) },
+      { name: "Progress", value: formatPercent(selectedCategory.progress) },
+      { name: "Average Daily", value: formatHours(actualHours / 7) },
+      { name: "Subcategories", value: subcategories.length.toString() },
+    ];
+    
+    const goals = [
+      { name: "Goal Time", value: formatHours(goalHours) },
+      { name: "Weekly Goal", value: formatHours(goalHours * 7) },
+      { name: "Monthly Goal", value: formatHours(goalHours * 30) },
+      { name: "Annual Goal", value: formatHours(goalHours * 365) },
+    ];
+    
+    return (
+      <CategoryDetail 
+        category={selectedCategory}
+        currentReality={currentReality}
+        goals={goals}
+      />
+    );
+  };
+  
+  return (
+    <div className="p-6">
+      {renderDateControls()}
+      {renderCalendar()}
+      {renderMetrics()}
       
-      {/* Desktop layout */}
-      {!isMobile && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
-            <h2 className="text-xl font-semibold mb-4">Categories</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              {dashboardData?.categories.map((category: any) => (
-                <CategoryCard 
-                  key={category.id}
-                  id={category.id}
-                  name={category.name}
-                  icon={category.icon}
-                  color={category.color}
-                  goalHours={category.goalHours}
-                  actualHours={category.actualHours}
-                  progress={category.progress}
-                  onClick={() => handleCategoryClick(category.id)}
-                  isSelected={selectedCategory === category.id}
-                />
-              ))}
+      <Tabs defaultValue="overview" className="mt-8">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="time">Time Tracking</TabsTrigger>
+          <TabsTrigger value="habits">Habits</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="overview" className="mt-6">
+          {selectedCategory ? (
+            <div className="mb-4">
+              <Button 
+                variant="ghost" 
+                onClick={handleBackClick} 
+                className="mb-4"
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Back to overview
+              </Button>
+              {renderCategoryDetail()}
             </div>
-          </div>
-          
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Details</h2>
-            {selectedCategoryData ? (
-              <CategoryDetail 
-                category={selectedCategoryData.category} 
-                currentReality={selectedCategoryData.currentReality}
-                goals={selectedCategoryData.goals}
-              />
-            ) : (
-              <div className="bg-gray-50 p-6 rounded-lg text-center text-gray-500">
-                Select a category to view details
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+          ) : (
+            renderCategoryList()
+          )}
+        </TabsContent>
+        
+        <TabsContent value="time" className="mt-6">
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-medium mb-4">Time Tracking</h3>
+              <p className="text-gray-500">
+                Detailed time tracking view coming soon...
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="habits" className="mt-6">
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-medium mb-4">Habits</h3>
+              <p className="text-gray-500">
+                Habits tracking view coming soon...
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
       
-      {/* Mobile layout */}
-      {isMobile && (
-        <Tabs defaultValue="categories" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="categories">Categories</TabsTrigger>
-            <TabsTrigger value="details">Details</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="categories" className="m-0">
-            <div className="grid grid-cols-1 gap-4">
-              {dashboardData?.categories.map((category: any) => (
-                <CategoryCard 
-                  key={category.id}
-                  id={category.id}
-                  name={category.name}
-                  icon={category.icon}
-                  color={category.color}
-                  goalHours={category.goalHours}
-                  actualHours={category.actualHours}
-                  progress={category.progress}
-                  onClick={() => handleCategoryClick(category.id)}
-                  isSelected={selectedCategory === category.id}
-                />
-              ))}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="details" className="m-0">
-            {selectedCategoryData ? (
-              <CategoryDetail 
-                category={selectedCategoryData.category} 
-                currentReality={selectedCategoryData.currentReality}
-                goals={selectedCategoryData.goals}
-              />
-            ) : (
-              <div className="bg-gray-50 p-6 rounded-lg text-center text-gray-500">
-                Select a category to view details
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      )}
+      <DailyEntryForm
+        open={dailyEntryOpen}
+        onOpenChange={setDailyEntryOpen}
+        selectedDate={date}
+        categories={categories}
+      />
       
-      {categories && (
-        <>
-          <DailyEntryForm
-            open={isEntryFormOpen}
-            onOpenChange={setIsEntryFormOpen}
-            selectedDate={selectedDate}
-            categories={categories}
-            currentEntry={dailyEntry}
-          />
-          
-          <CategoryForm
-            open={isCategoryFormOpen}
-            onOpenChange={setIsCategoryFormOpen}
-          />
-        </>
-      )}
+      <CategoryForm
+        open={categoryFormOpen}
+        onOpenChange={setCategoryFormOpen}
+      />
     </div>
   );
 }
