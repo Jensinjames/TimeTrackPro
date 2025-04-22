@@ -407,18 +407,6 @@ export default function Dashboard() {
         selectedDate={date}
         categories={categoriesData || categories}
       />
-      
-      <CategoryForm
-        open={categoryFormOpen}
-        onOpenChange={(isOpen) => {
-          setCategoryFormOpen(isOpen);
-          if (!isOpen) {
-            // Refetch categories and dashboard data when form closes
-            queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
-            refetchDashboard();
-          }
-        }}
-      />
     </div>
   );
 }
