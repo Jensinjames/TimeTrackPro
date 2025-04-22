@@ -117,9 +117,8 @@ export default function DailyEntryForm({
       return entry;
     },
     onSuccess: () => {
-      // Invalidate relevant queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/entries', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard', user?.id, selectedDate.toISOString().split('T')[0]] });
+      // Force complete refresh of all related data
+      queryClient.invalidateQueries();
       
       // Close form and show success toast
       onOpenChange(false);
@@ -180,9 +179,8 @@ export default function DailyEntryForm({
       return entry;
     },
     onSuccess: () => {
-      // Invalidate relevant queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/entries', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard', user?.id, selectedDate.toISOString().split('T')[0]] });
+      // Force complete refresh of all related data
+      queryClient.invalidateQueries();
       
       // Close form and show success toast
       onOpenChange(false);
@@ -263,9 +261,8 @@ export default function DailyEntryForm({
         dailyEntry = await createDailyEntryMutation.mutateAsync(payload);
       }
       
-      // Update dashboard data
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/entries'] });
+      // Force a complete refresh of all data
+      queryClient.invalidateQueries();
       
       // Close the form
       onOpenChange(false);
