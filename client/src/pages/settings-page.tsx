@@ -11,7 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { getCategoryIcon, getCategoryColor, hourOptions } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, ChevronLeft } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function SettingsPage() {
   return (
@@ -19,10 +21,10 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
       
       <Tabs defaultValue="categories">
-        <TabsList className="mb-6">
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        <TabsList className="mb-6 w-full flex overflow-x-auto">
+          <TabsTrigger value="categories" className="flex-1">Categories</TabsTrigger>
+          <TabsTrigger value="account" className="flex-1">Account</TabsTrigger>
+          <TabsTrigger value="notifications" className="flex-1">Notifications</TabsTrigger>
         </TabsList>
         
         <TabsContent value="categories">
@@ -44,6 +46,7 @@ export default function SettingsPage() {
 function CategorySettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   
   // Fetch categories
   const { data: categories, isLoading } = useQuery({
@@ -231,155 +234,169 @@ function CategorySettings() {
   }
   
   return (
-    <div className="grid md:grid-cols-3 gap-6">
-      {/* Categories list */}
-      <Card className="md:col-span-1">
-        <CardHeader>
-          <CardTitle className="text-lg">Categories</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {categories?.map((category: any) => (
-              <div 
-                key={category.id}
-                className={`p-3 rounded-md cursor-pointer flex items-center ${
-                  activeCategory?.id === category.id 
-                    ? `${getCategoryColor(category.name).light} border ${getCategoryColor(category.name).border}`
-                    : "hover:bg-gray-100"
-                }`}
-                onClick={() => handleCategorySelect(category)}
-              >
-                <div className={`h-8 w-8 rounded-md ${getCategoryColor(category.name).bg} text-white flex items-center justify-center mr-3`}>
-                  <i className={getCategoryIcon(category.icon)}></i>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Category list - Always visible on desktop, only visible on mobile when no category is selected */}
+      {(!isMobile || !activeCategory) && (
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle className="text-lg">Categories</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {categories?.map((category: any) => (
+                <div 
+                  key={category.id}
+                  className={`p-3 rounded-md cursor-pointer flex items-center ${
+                    activeCategory?.id === category.id 
+                      ? `${getCategoryColor(category.name).light} border ${getCategoryColor(category.name).border}`
+                      : "hover:bg-gray-100"
+                  }`}
+                  onClick={() => handleCategorySelect(category)}
+                >
+                  <div className={`h-8 w-8 rounded-md ${getCategoryColor(category.name).bg} text-white flex items-center justify-center mr-3`}>
+                    <i className={getCategoryIcon(category.icon)}></i>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{category.name}</h3>
+                    <p className="text-xs text-gray-500">{category.subcategories.length} subcategories</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-medium">{category.name}</h3>
-                  <p className="text-xs text-gray-500">{category.subcategories.length} subcategories</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {isAddingCategory ? (
-            <div className="mt-4 border rounded-md p-4 space-y-3">
-              <h3 className="text-sm font-medium">Add New Category</h3>
-              <div className="space-y-3">
-                <div>
-                  <Label>Name</Label>
-                  <Input 
-                    value={newCategory.name} 
-                    onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
-                    placeholder="Enter category name"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
+              ))}
+            </div>
+            
+            {isAddingCategory ? (
+              <div className="mt-4 border rounded-md p-4 space-y-3">
+                <h3 className="text-sm font-medium">Add New Category</h3>
+                <div className="space-y-3">
                   <div>
-                    <Label>Icon</Label>
-                    <Select
-                      value={newCategory.icon}
-                      onValueChange={(value) => setNewCategory({...newCategory, icon: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select icon" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pray">
-                          <div className="flex items-center">
-                            <i className="fas fa-pray mr-2"></i>
-                            <span>Pray</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="sun">
-                          <div className="flex items-center">
-                            <i className="fas fa-sun mr-2"></i>
-                            <span>Sun</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="briefcase">
-                          <div className="flex items-center">
-                            <i className="fas fa-briefcase mr-2"></i>
-                            <span>Briefcase</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="heart">
-                          <div className="flex items-center">
-                            <i className="fas fa-heart mr-2"></i>
-                            <span>Heart</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Name</Label>
+                    <Input 
+                      value={newCategory.name} 
+                      onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                      placeholder="Enter category name"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label>Icon</Label>
+                      <Select
+                        value={newCategory.icon}
+                        onValueChange={(value) => setNewCategory({...newCategory, icon: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select icon" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pray">
+                            <div className="flex items-center">
+                              <i className="fas fa-pray mr-2"></i>
+                              <span>Pray</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="sun">
+                            <div className="flex items-center">
+                              <i className="fas fa-sun mr-2"></i>
+                              <span>Sun</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="briefcase">
+                            <div className="flex items-center">
+                              <i className="fas fa-briefcase mr-2"></i>
+                              <span>Briefcase</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="heart">
+                            <div className="flex items-center">
+                              <i className="fas fa-heart mr-2"></i>
+                              <span>Heart</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label>Goal (hours)</Label>
+                      <Select
+                        value={newCategory.goalHours.toString()}
+                        onValueChange={(value) => setNewCategory({...newCategory, goalHours: parseFloat(value)})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select hours" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {hourOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   
                   <div>
-                    <Label>Goal (hours)</Label>
-                    <Select
-                      value={newCategory.goalHours.toString()}
-                      onValueChange={(value) => setNewCategory({...newCategory, goalHours: parseFloat(value)})}
+                    <Label>Color</Label>
+                    <Input 
+                      type="color"
+                      value={newCategory.color} 
+                      onChange={(e) => setNewCategory({...newCategory, color: e.target.value})}
+                      className="h-10"
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end space-x-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => setIsAddingCategory(false)}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select hours" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {hourOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => createCategoryMutation.mutate(newCategory)}
+                      disabled={createCategoryMutation.isPending || !newCategory.name}
+                    >
+                      {createCategoryMutation.isPending ? "Creating..." : "Create Category"}
+                    </Button>
                   </div>
                 </div>
-                
-                <div>
-                  <Label>Color</Label>
-                  <Input 
-                    type="color"
-                    value={newCategory.color} 
-                    onChange={(e) => setNewCategory({...newCategory, color: e.target.value})}
-                    className="h-10"
-                  />
-                </div>
-                
-                <div className="flex justify-end space-x-2">
-                  <Button 
-                    variant="outline"
-                    onClick={() => setIsAddingCategory(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={() => createCategoryMutation.mutate(newCategory)}
-                    disabled={createCategoryMutation.isPending || !newCategory.name}
-                  >
-                    {createCategoryMutation.isPending ? "Creating..." : "Create Category"}
-                  </Button>
-                </div>
               </div>
-            </div>
-          ) : (
-            <Button 
-              className="w-full mt-4"
-              onClick={() => setIsAddingCategory(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Category
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <Button 
+                className="w-full mt-4"
+                onClick={() => setIsAddingCategory(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Category
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
       
-      {/* Category details */}
-      {activeCategory ? (
+      {/* Category details - Always visible on desktop, only visible on mobile when category is selected */}
+      {activeCategory && (
         <Card className="md:col-span-2">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center">
               <div className={`h-6 w-6 rounded ${getCategoryColor(activeCategory.name).bg} text-white flex items-center justify-center mr-2`}>
                 <i className={getCategoryIcon(activeCategory.icon)}></i>
               </div>
               {activeCategory.name} Settings
             </CardTitle>
+            
+            {isMobile && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setActiveCategory(null)}
+                className="ml-auto"
+              >
+                <ChevronLeft size={16} className="mr-1" />
+                Back
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -387,7 +404,7 @@ function CategorySettings() {
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-gray-700">Category Details</h3>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Name</Label>
                     <Input 
@@ -416,7 +433,7 @@ function CategorySettings() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Icon</Label>
                     <Select
@@ -466,10 +483,11 @@ function CategorySettings() {
                   </div>
                 </div>
                 
-                <div className="flex justify-between">
+                <div className="flex flex-col sm:flex-row justify-between gap-2">
                   <Button 
                     onClick={() => updateCategoryMutation.mutate(activeCategory)}
                     disabled={updateCategoryMutation.isPending}
+                    className="w-full sm:w-auto"
                   >
                     <Save className="h-4 w-4 mr-2" />
                     Save Category
@@ -484,6 +502,7 @@ function CategorySettings() {
                       }
                     }}
                     disabled={deleteCategoryMutation.isPending}
+                    className="w-full sm:w-auto"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete Category
@@ -495,108 +514,29 @@ function CategorySettings() {
               
               {/* Subcategories */}
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-medium text-gray-700">Subcategories</h3>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => {
-                      setNewSubcategory({
-                        ...newSubcategory,
-                        categoryId: activeCategory.id
-                      });
-                      setIsAddingSubcategory(true);
-                    }}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Subcategory
-                  </Button>
-                </div>
+                <h3 className="text-sm font-medium text-gray-700">Subcategories</h3>
                 
-                <div className="space-y-2">
-                  {isAddingSubcategory && (
-                    <div className="p-3 rounded-md border border-blue-200 bg-blue-50 space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs">Name</Label>
-                          <Input 
-                            value={newSubcategory.name} 
-                            onChange={(e) => setNewSubcategory({...newSubcategory, name: e.target.value})}
-                            placeholder="Enter name"
-                            size="sm"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Type</Label>
-                          <Select
-                            value={newSubcategory.goalType}
-                            onValueChange={(value) => setNewSubcategory({...newSubcategory, goalType: value})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="time">Time</SelectItem>
-                              <SelectItem value="binary">True/False</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      {newSubcategory.goalType === "time" && (
-                        <div>
-                          <Label className="text-xs">Goal (minutes)</Label>
-                          <Input 
-                            type="number"
-                            value={newSubcategory.goalMinutes} 
-                            onChange={(e) => setNewSubcategory({
-                              ...newSubcategory, 
-                              goalMinutes: parseInt(e.target.value)
-                            })}
-                          />
-                        </div>
-                      )}
-                      
-                      <div className="flex justify-end space-x-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => setIsAddingSubcategory(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          size="sm"
-                          onClick={() => createSubcategoryMutation.mutate(newSubcategory)}
-                          disabled={createSubcategoryMutation.isPending || !newSubcategory.name}
-                        >
-                          {createSubcategoryMutation.isPending ? "Creating..." : "Create"}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {activeCategory.subcategories.map((subcategory: any) => (
+                <div className="space-y-3">
+                  {activeCategory.subcategories?.map((subcategory: any) => (
                     <div 
                       key={subcategory.id}
-                      className={`p-3 rounded-md border ${
-                        editingSubcategory?.id === subcategory.id 
-                          ? `${getCategoryColor(activeCategory.name).border}`
-                          : "border-gray-200"
+                      className={`border rounded-md p-3 ${
+                        editingSubcategory?.id === subcategory.id ? "border-blue-500" : ""
                       }`}
                     >
                       {editingSubcategory?.id === subcategory.id ? (
                         <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label>Name</Label>
+                            <Input 
+                              value={editingSubcategory.name} 
+                              onChange={(e) => setEditingSubcategory({...editingSubcategory, name: e.target.value})}
+                            />
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                              <Label className="text-xs">Name</Label>
-                              <Input 
-                                value={editingSubcategory.name} 
-                                onChange={(e) => setEditingSubcategory({...editingSubcategory, name: e.target.value})}
-                                size="sm"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Type</Label>
+                              <Label>Goal Type</Label>
                               <Select
                                 value={editingSubcategory.goalType}
                                 onValueChange={(value) => setEditingSubcategory({...editingSubcategory, goalType: value})}
@@ -605,86 +545,172 @@ function CategorySettings() {
                                   <SelectValue placeholder="Select type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="time">Time</SelectItem>
-                                  <SelectItem value="binary">True/False</SelectItem>
+                                  <SelectItem value="time">Time-based</SelectItem>
+                                  <SelectItem value="habit">Habit (Yes/No)</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
+                            
+                            {editingSubcategory.goalType === "time" && (
+                              <div>
+                                <Label>Goal (minutes)</Label>
+                                <Input 
+                                  type="number"
+                                  value={editingSubcategory.goalMinutes} 
+                                  onChange={(e) => setEditingSubcategory({
+                                    ...editingSubcategory, 
+                                    goalMinutes: parseInt(e.target.value) || 0
+                                  })}
+                                />
+                              </div>
+                            )}
                           </div>
-                          
-                          {editingSubcategory.goalType === "time" && (
-                            <div>
-                              <Label className="text-xs">Goal (minutes)</Label>
-                              <Input 
-                                type="number"
-                                value={editingSubcategory.goalMinutes} 
-                                onChange={(e) => setEditingSubcategory({
-                                  ...editingSubcategory, 
-                                  goalMinutes: parseInt(e.target.value)
-                                })}
-                              />
-                            </div>
-                          )}
                           
                           <div className="flex justify-end space-x-2">
                             <Button 
-                              size="sm" 
                               variant="outline"
                               onClick={() => setEditingSubcategory(null)}
                             >
                               Cancel
                             </Button>
                             <Button 
-                              size="sm"
                               onClick={() => updateSubcategoryMutation.mutate(editingSubcategory)}
-                              disabled={updateSubcategoryMutation.isPending}
+                              disabled={updateSubcategoryMutation.isPending || !editingSubcategory.name}
                             >
-                              Save
+                              {updateSubcategoryMutation.isPending ? "Updating..." : "Update"}
                             </Button>
                           </div>
                         </div>
                       ) : (
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
                           <div>
-                            <div className="font-medium">{subcategory.name}</div>
-                            <div className="text-xs text-gray-500">
-                              {subcategory.goalType === "time" 
-                                ? `Goal: ${subcategory.goalMinutes} minutes` 
-                                : "Type: True/False"}
-                            </div>
+                            <h4 className="font-medium">{subcategory.name}</h4>
+                            <p className="text-xs text-gray-500">
+                              {subcategory.goalType === "time"
+                                ? `${subcategory.goalMinutes} minutes per day`
+                                : "Daily habit (Yes/No)"}
+                            </p>
                           </div>
-                          <div className="flex space-x-2">
+                          
+                          <div className="flex space-x-1 mt-2 sm:mt-0">
                             <Button 
-                              size="sm" 
-                              variant="ghost"
+                              variant="ghost" 
+                              size="sm"
                               onClick={() => setEditingSubcategory(subcategory)}
                             >
                               Edit
                             </Button>
                             <Button 
-                              size="sm" 
                               variant="ghost" 
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => deleteSubcategoryMutation.mutate(subcategory.id)}
+                              size="sm"
+                              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to delete the subcategory "${subcategory.name}"?`)) {
+                                  deleteSubcategoryMutation.mutate(subcategory.id);
+                                }
+                              }}
                               disabled={deleteSubcategoryMutation.isPending}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              Delete
                             </Button>
                           </div>
                         </div>
                       )}
                     </div>
                   ))}
+                  
+                  {isAddingSubcategory ? (
+                    <div className="border rounded-md p-3 space-y-3">
+                      <h4 className="text-sm font-medium">Add New Subcategory</h4>
+                      
+                      <div>
+                        <Label>Name</Label>
+                        <Input 
+                          value={newSubcategory.name} 
+                          onChange={(e) => setNewSubcategory({...newSubcategory, name: e.target.value})}
+                          placeholder="Enter subcategory name"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label>Goal Type</Label>
+                          <Select
+                            value={newSubcategory.goalType}
+                            onValueChange={(value) => setNewSubcategory({...newSubcategory, goalType: value})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="time">Time-based</SelectItem>
+                              <SelectItem value="habit">Habit (Yes/No)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {newSubcategory.goalType === "time" && (
+                          <div>
+                            <Label>Goal (minutes)</Label>
+                            <Input 
+                              type="number"
+                              value={newSubcategory.goalMinutes} 
+                              onChange={(e) => setNewSubcategory({
+                                ...newSubcategory, 
+                                goalMinutes: parseInt(e.target.value) || 0
+                              })}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex justify-end space-x-2">
+                        <Button 
+                          variant="outline"
+                          onClick={() => setIsAddingSubcategory(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            createSubcategoryMutation.mutate({
+                              ...newSubcategory,
+                              categoryId: activeCategory.id
+                            });
+                          }}
+                          disabled={createSubcategoryMutation.isPending || !newSubcategory.name}
+                        >
+                          {createSubcategoryMutation.isPending ? "Creating..." : "Create"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => setIsAddingSubcategory(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Subcategory
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-      ) : (
-        <Card className="md:col-span-2">
-          <CardContent className="flex items-center justify-center h-64 text-gray-500">
-            Select a category to view and edit its settings
-          </CardContent>
+      )}
+      
+      {/* No category selected prompt for desktop view */}
+      {!activeCategory && !isMobile && (
+        <Card className="md:col-span-2 flex flex-col items-center justify-center p-6">
+          <div className="text-center py-12">
+            <div className="bg-gray-100 p-6 rounded-full mx-auto mb-6 w-20 h-20 flex items-center justify-center">
+              <i className="fas fa-arrow-left text-gray-400 text-xl"></i>
+            </div>
+            <h3 className="text-lg font-medium text-gray-800 mb-2">Select a category to view and edit its settings</h3>
+            <p className="text-gray-500 max-w-md">Choose from your existing categories or create a new one to get started.</p>
+          </div>
         </Card>
       )}
     </div>
@@ -693,6 +719,7 @@ function CategorySettings() {
 
 function AccountSettings() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   
   return (
     <Card>
@@ -703,30 +730,38 @@ function AccountSettings() {
         <div className="space-y-4">
           <div>
             <Label>Name</Label>
-            <Input defaultValue={user?.name || ""} />
+            <Input defaultValue={user?.name || ""} className="w-full md:w-2/3 lg:w-1/2" />
           </div>
           
           <div>
             <Label>Username</Label>
-            <Input defaultValue={user?.username || ""} />
+            <Input defaultValue={user?.username || ""} className="w-full md:w-2/3 lg:w-1/2" />
           </div>
           
           <div>
-            <Label>Email</Label>
-            <Input defaultValue={user?.email || ""} />
+            <Label>Email Address</Label>
+            <Input type="email" defaultValue={user?.email || ""} className="w-full md:w-2/3 lg:w-1/2" />
           </div>
+          
+          <Separator className="my-6" />
           
           <div>
-            <Label>New Password</Label>
-            <Input type="password" />
+            <Label>Change Password</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+              <div>
+                <Input type="password" placeholder="Current password" className="w-full" />
+              </div>
+              <div className={isMobile ? "mt-4 md:mt-0" : ""}>
+                <Input type="password" placeholder="New password" className="w-full" />
+              </div>
+            </div>
           </div>
           
-          <div>
-            <Label>Confirm Password</Label>
-            <Input type="password" />
+          <div className="pt-4">
+            <Button className="w-full sm:w-auto">
+              Save Changes
+            </Button>
           </div>
-          
-          <Button>Save Changes</Button>
         </div>
       </CardContent>
     </Card>
@@ -743,43 +778,37 @@ function NotificationSettings() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 sm:mb-0">
               <h3 className="font-medium">Daily Reminder Email</h3>
               <p className="text-sm text-gray-500">Receive a daily email reminder to complete your tracking</p>
             </div>
-            <Switch defaultChecked={user?.emailReminders} />
+            <Switch defaultChecked={user?.emailReminders || false} />
           </div>
           
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 sm:mb-0">
               <h3 className="font-medium">Weekly Summary</h3>
-              <p className="text-sm text-gray-500">Receive a weekly summary of your progress</p>
+              <p className="text-sm text-gray-500">Get a weekly email with your progress report</p>
             </div>
-            <Switch defaultChecked={false} />
+            <Switch defaultChecked />
           </div>
           
-          <div>
-            <Label>Reminder Time</Label>
-            <Select defaultValue="18">
-              <SelectTrigger>
-                <SelectValue placeholder="Select time" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="6">6:00 AM</SelectItem>
-                <SelectItem value="12">12:00 PM</SelectItem>
-                <SelectItem value="18">6:00 PM</SelectItem>
-                <SelectItem value="20">8:00 PM</SelectItem>
-                <SelectItem value="22">10:00 PM</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 sm:mb-0">
+              <h3 className="font-medium">Goal Achievement</h3>
+              <p className="text-sm text-gray-500">Be notified when you reach your daily goals</p>
+            </div>
+            <Switch defaultChecked />
           </div>
           
-          <Button>Save Preferences</Button>
+          <div className="pt-4">
+            <Button className="w-full sm:w-auto">
+              Save Notification Preferences
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 }
-
-import { useAuth } from "@/hooks/use-auth";

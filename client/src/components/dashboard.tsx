@@ -146,17 +146,18 @@ export default function Dashboard() {
   );
   
   const renderDateControls = () => (
-    <div className="mb-6 flex justify-between items-center">
-      <div className="flex items-center space-x-4">
+    <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+      <div className="flex items-center space-x-2 sm:space-x-4">
         <Button 
           variant="outline" 
           size="icon" 
           onClick={handlePrevDay}
+          className="h-8 w-8 sm:h-9 sm:w-9"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div 
-          className="font-medium cursor-pointer" 
+          className="font-medium cursor-pointer text-sm sm:text-base" 
           onClick={() => setShowCalendar(!showCalendar)}
         >
           {dateStr}
@@ -165,40 +166,68 @@ export default function Dashboard() {
           variant="outline" 
           size="icon" 
           onClick={handleNextDay}
+          className="h-8 w-8 sm:h-9 sm:w-9"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
       
-      <div className="flex items-center space-x-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleAddCategoryClick}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Category
-        </Button>
-        <Button 
-          size="sm" 
-          onClick={handleAddEntryClick}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Entry
-        </Button>
+      <div className="flex items-center space-x-2 w-full sm:w-auto">
+        {!isMobile ? (
+          <>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleAddCategoryClick}
+              className="flex-1 sm:flex-auto"
+            >
+              <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="whitespace-nowrap">Add Category</span>
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handleAddEntryClick}
+              className="flex-1 sm:flex-auto"
+            >
+              <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="whitespace-nowrap">Add Entry</span>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleAddCategoryClick}
+              className="flex-1"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              <span>Category</span>
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handleAddEntryClick}
+              className="flex-1"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              <span>Entry</span>
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
   
   const renderCalendar = () => (
     <div className={`relative ${showCalendar ? 'block' : 'hidden'}`}>
-      <Card className="absolute top-0 z-10 w-auto">
+      <Card className="absolute top-0 left-0 sm:left-auto z-10 w-full sm:w-auto max-w-[100vw] overflow-auto">
         <CardContent className="p-0">
           <Calendar
             mode="single"
             selected={date}
             onSelect={handleDateSelect}
             initialFocus
+            className="rounded-md"
           />
         </CardContent>
       </Card>

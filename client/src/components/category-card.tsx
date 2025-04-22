@@ -146,11 +146,11 @@ export default function CategoryCard({
             animate={{ width: "100%" }}
             transition={{ duration: 0.7, delay: id * 0.05 }}
           ></motion.div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="flex items-start justify-between mb-4">
-              <div>
+              <div className="flex-1 min-w-0 pr-2">
                 <motion.h3 
-                  className="font-medium text-lg"
+                  className="font-medium text-base sm:text-lg truncate"
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.1 + (id * 0.05) }}
@@ -158,7 +158,7 @@ export default function CategoryCard({
                   {name}
                 </motion.h3>
                 <motion.p 
-                  className="text-sm text-gray-500"
+                  className="text-xs sm:text-sm text-gray-500 truncate"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4, delay: 0.2 + (id * 0.05) }}
@@ -170,12 +170,12 @@ export default function CategoryCard({
               </div>
               <motion.div 
                 className={`
-                  h-10 w-10 rounded-full ${colorStyle.light} 
-                  flex items-center justify-center
+                  h-9 w-9 sm:h-10 sm:w-10 rounded-full ${colorStyle.light} 
+                  flex items-center justify-center flex-shrink-0
                 `}
                 variants={iconVariants}
               >
-                <i className={`${iconClass} ${colorStyle.text}`}></i>
+                <i className={`${iconClass} ${colorStyle.text} text-sm sm:text-base`}></i>
               </motion.div>
             </div>
             
