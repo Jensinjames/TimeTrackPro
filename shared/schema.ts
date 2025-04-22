@@ -121,7 +121,9 @@ export const defaultCategories = [
     name: "Work",
     color: "#DC2626",
     icon: "briefcase",
-    goalHours: 40,
+    goalHours: 8,
+    monthlyGoalHours: 160,
+    goalPeriod: "daily",
     subcategories: [
       { name: "Lamb co.TimberWild", goalMinutes: 960, goalType: "time" },
       { name: "Partnership", goalMinutes: 480, goalType: "time" },
@@ -133,7 +135,9 @@ export const defaultCategories = [
     name: "Health",
     color: "#EC4899",
     icon: "heart",
-    goalHours: 14,
+    goalHours: 2,
+    monthlyGoalHours: 60,
+    goalPeriod: "daily",
     subcategories: [
       { name: "Exercise", goalMinutes: 300, goalType: "time" },
       { name: "Sleep", goalMinutes: 480, goalType: "time" },

@@ -9,6 +9,8 @@ interface CategoryCardProps {
   icon: string;
   color: string;
   goalHours: number;
+  monthlyGoalHours?: number;
+  goalPeriod?: 'daily' | 'monthly';
   actualHours: number;
   progress: number;
   onClick: () => void;
@@ -21,6 +23,8 @@ export default function CategoryCard({
   icon,
   color,
   goalHours,
+  monthlyGoalHours,
+  goalPeriod = 'daily',
   actualHours,
   progress,
   onClick,
