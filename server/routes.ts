@@ -256,6 +256,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch dashboard data" });
     }
   });
+  
+  // Get history data (last 30 days)
+  app.get("/api/history", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 30); // Last 30 days
+      
+      // Get all daily entries for date range
+      const entries = await storage.getDailyEntriesInRange(req.user.id, start, end);
+      
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching history data:", error);
+      res.status(500).json({ message: "Failed to fetch history data" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

@@ -64,6 +64,9 @@ export interface IStorage {
 
   // Dashboard data methods
   getDashboardData(userId: number, date: Date): Promise<any>;
+  
+  // History data methods
+  getDailyEntriesInRange(userId: number, startDate: Date, endDate: Date): Promise<any[]>;
 
   // Session store
   sessionStore: any;
