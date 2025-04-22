@@ -1,0 +1,39 @@
+hook.js:608 onClick is deprecated, please use onPress
+overrideMethod @ hook.js:608Understand this warning
+5hook.js:608 If you do not provide children, you must specify an aria-label for accessibility
+overrideMethod @ hook.js:608Understand this warning
+2hook.js:608 onClick is deprecated, please use onPress
+overrideMethod @ hook.js:608Understand this warning
+22hook.js:608 If you do not provide children, you must specify an aria-label for accessibility
+overrideMethod @ hook.js:608Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'ambient-light-sensor'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'battery'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'execution-while-not-rendered'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'execution-while-out-of-viewport'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'layout-animations'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'legacy-image-formats'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'navigation-override'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'oversized-images'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'publickey-credentials'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'speaker-selection'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'unoptimized-images'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'unsized-media'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Unrecognized feature: 'pointer-lock'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Allow attribute will take precedence over 'allowfullscreen'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+framework-41e1e937ec91d484.js:1 Allow attribute will take precedence over 'allowpaymentrequest'.
+_ @ framework-41e1e937ec91d484.js:1Understand this warning
+hook.js:608 Command: javascript-root-command has unrecognized contributions: commandbar. Valid contributions are commandbar,filetree-context-menu,sidebar-search,editor-context-menu Object
