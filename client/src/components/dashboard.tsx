@@ -231,9 +231,15 @@ export default function Dashboard() {
       icon, 
       color, 
       goalHours, 
+      monthlyGoalHours = goalHours * 30, // Fallback for existing categories
+      goalPeriod = 'daily', // Fallback for existing categories
       actualHours, 
       subcategories = [] 
     } = selectedCategory;
+    
+    // Calculate the correct daily/monthly values based on goal period
+    const effectiveDailyGoal = goalPeriod === 'daily' ? goalHours : monthlyGoalHours / 30;
+    const effectiveMonthlyGoal = goalPeriod === 'monthly' ? monthlyGoalHours : goalHours * 30;
     
     const currentReality = [
       { name: "Time Spent", value: formatHours(actualHours) },
@@ -243,10 +249,10 @@ export default function Dashboard() {
     ];
     
     const goals = [
-      { name: "Goal Time", value: formatHours(goalHours) },
-      { name: "Weekly Goal", value: formatHours(goalHours * 7) },
-      { name: "Monthly Goal", value: formatHours(goalHours * 30) },
-      { name: "Annual Goal", value: formatHours(goalHours * 365) },
+      { name: "Daily Goal", value: formatHours(effectiveDailyGoal) },
+      { name: "Weekly Goal", value: formatHours(effectiveDailyGoal * 7) },
+      { name: "Monthly Goal", value: formatHours(effectiveMonthlyGoal) },
+      { name: "Annual Goal", value: formatHours(effectiveMonthlyGoal * 12) },
     ];
     
     return (

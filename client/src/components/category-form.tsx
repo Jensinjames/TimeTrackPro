@@ -24,6 +24,11 @@ interface CategoryFormProps {
 const categoryFormSchema = insertCategorySchema.extend({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   goalHours: z.coerce.number().min(0, { message: "Goal hours must be a positive number" }),
+  monthlyGoalHours: z.coerce.number().min(0, { message: "Monthly goal hours must be a positive number" }),
+  goalPeriod: z.enum(["daily", "monthly"], { 
+    required_error: "Please select a goal period",
+    invalid_type_error: "Goal period must be either daily or monthly",
+  }),
 });
 
 type CategoryFormValues = z.infer<typeof categoryFormSchema>;
@@ -70,6 +75,8 @@ export default function CategoryForm({
       color: "blue",
       icon: "fa-solid fa-chart-line",
       goalHours: 1,
+      monthlyGoalHours: 30, // Default to 30 hours per month
+      goalPeriod: "daily" as "daily" | "monthly",
       userId: user?.id,
       order: 0
     }
@@ -171,23 +178,70 @@ export default function CategoryForm({
             
             <FormField
               control={form.control}
-              name="goalHours"
+              name="goalPeriod"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Daily Goal (hours)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min="0"
-                      step="0.5"
-                      placeholder="E.g., 2" 
-                      {...field} 
-                    />
-                  </FormControl>
+                  <FormLabel>Goal Period</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select goal period" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            
+            {form.watch("goalPeriod") === "daily" ? (
+              <FormField
+                control={form.control}
+                name="goalHours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Daily Goal (hours)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="0"
+                        step="0.5"
+                        placeholder="E.g., 2" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <FormField
+                control={form.control}
+                name="monthlyGoalHours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Monthly Goal (hours)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="0"
+                        step="1"
+                        placeholder="E.g., 30" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             
             <FormField
               control={form.control}

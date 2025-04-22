@@ -27,7 +27,9 @@ export const categories = pgTable("categories", {
   name: text("name").notNull(),
   color: text("color").notNull(),
   icon: text("icon").notNull(),
-  goalHours: real("goal_hours").notNull(),
+  goalHours: real("goal_hours").notNull(), // Daily goal hours
+  monthlyGoalHours: real("monthly_goal_hours").notNull().default(0), // Monthly goal hours
+  goalPeriod: text("goal_period").notNull().default("daily"), // "daily" or "monthly"
   order: integer("order").notNull().default(0),
 });
 
