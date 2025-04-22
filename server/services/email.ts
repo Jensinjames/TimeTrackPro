@@ -1,9 +1,11 @@
 import { MailService } from '@sendgrid/mail';
 
+// Check for SendGrid API key
 if (!process.env.SENDGRID_API_KEY) {
-  console.warn("Warning: SENDGRID_API_KEY environment variable is not set. Email notifications will not be sent.");
+  console.warn("Warning: SENDGRID_API_KEY environment variable is not set. Email functionality will be disabled.");
 }
 
+// Create mail service instance
 const mailService = new MailService();
 if (process.env.SENDGRID_API_KEY) {
   mailService.setApiKey(process.env.SENDGRID_API_KEY);
@@ -24,17 +26,19 @@ export interface EmailParams {
  */
 export async function sendEmail(params: EmailParams): Promise<boolean> {
   if (!process.env.SENDGRID_API_KEY) {
-    console.warn("Email not sent: SENDGRID_API_KEY is not set");
+    console.warn("Cannot send email: SENDGRID_API_KEY not set");
     return false;
   }
 
   try {
+    const fromEmail: string = params.from || 'noreply@timetracker.app';
+    // Ensure all required fields are strings
     await mailService.send({
       to: params.to,
-      from: params.from,
-      subject: params.subject,
-      text: params.text,
-      html: params.html,
+      from: fromEmail,
+      subject: params.subject || '',
+      text: params.text || '',
+      html: params.html || '',
     });
     console.log(`Email sent successfully to ${params.to}`);
     return true;
@@ -51,35 +55,27 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
  * @returns A promise that resolves to a boolean indicating success
  */
 export async function sendDailyReminder(to: string, username: string): Promise<boolean> {
-  const subject = "Time to log your day - Daily Reminder";
+  const subject = 'Time Tracker - Daily Reminder';
+  const text = `Hello ${username},\n\nThis is your daily reminder to log your time for today and track your productivity.\n\nBest regards,\nTime Tracker Team`;
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2>Hello ${username},</h2>
-      <p>This is your daily reminder to log your time for today in your time tracking dashboard.</p>
-      <p>Consistently tracking your time helps you:</p>
-      <ul>
-        <li>Stay aware of how you're spending your time</li>
-        <li>Identify patterns and areas for improvement</li>
-        <li>Make progress toward your goals</li>
-      </ul>
-      <p style="margin-top: 30px;">
-        <a href="${process.env.APP_URL || 'https://your-app-url.com'}" 
-           style="background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-          Log Your Day Now
-        </a>
-      </p>
-      <p style="margin-top: 30px; font-size: 12px; color: #666;">
-        You received this email because you enabled daily reminders in your notification settings.
-        <br>To update your preferences, visit the Settings page in your dashboard.
-      </p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #4a6ee0;">Time Tracker - Daily Reminder</h2>
+      <p>Hello ${username},</p>
+      <p>This is your daily reminder to log your time for today and track your productivity.</p>
+      <div style="margin: 30px 0; text-align: center;">
+        <a href="https://timetracker.app/dashboard" style="background-color: #4a6ee0; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Go to Dashboard</a>
+      </div>
+      <p>Stay productive!</p>
+      <p>Best regards,<br>Time Tracker Team</p>
     </div>
   `;
 
   return sendEmail({
     to,
-    from: 'notifications@timetracker.com',
+    from: 'noreply@timetracker.app',
     subject,
-    html,
+    text,
+    html
   });
 }
 
@@ -93,65 +89,65 @@ export async function sendDailyReminder(to: string, username: string): Promise<b
 export async function sendWeeklySummary(
   to: string, 
   username: string, 
-  weeklyData: { 
-    weekStartDate: string,
-    weekEndDate: string,
-    topCategories: Array<{ name: string, hours: number }>,
-    goalAchievement: number,
-    totalHoursLogged: number
+  weeklyData: {
+    averageDailyScore: number;
+    topCategory: string;
+    topCategoryHours: number;
+    totalTrackedHours: number;
+    unaccountedHours: number;
   }
 ): Promise<boolean> {
-  const subject = "Your Weekly Time Tracking Summary";
+  const subject = 'Time Tracker - Your Weekly Summary';
   
-  // Create the category breakdown HTML
-  const categoriesHtml = weeklyData.topCategories.map(cat => 
-    `<tr>
-      <td style="padding: 8px; border-bottom: 1px solid #eee;">${cat.name}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #eee;">${cat.hours.toFixed(1)} hours</td>
-    </tr>`
-  ).join('');
+  const text = `Hello ${username},\n\n
+Here's your weekly productivity summary:
+- Average Daily Score: ${weeklyData.averageDailyScore.toFixed(1)}/10
+- Top Category: ${weeklyData.topCategory} (${weeklyData.topCategoryHours.toFixed(1)} hours)
+- Total Tracked Time: ${weeklyData.totalTrackedHours.toFixed(1)} hours
+- Unaccounted Time: ${weeklyData.unaccountedHours.toFixed(1)} hours\n\n
+Keep up the good work!\n\n
+Best regards,\nTime Tracker Team`;
 
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2>Weekly Summary for ${username}</h2>
-      <p>Here's an overview of your time tracking for the week of ${weeklyData.weekStartDate} to ${weeklyData.weekEndDate}:</p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #4a6ee0;">Time Tracker - Your Weekly Summary</h2>
+      <p>Hello ${username},</p>
+      <p>Here's your weekly productivity summary:</p>
       
-      <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        <h3 style="margin-top: 0;">Weekly Highlights</h3>
-        <ul>
-          <li>You tracked <strong>${weeklyData.totalHoursLogged.toFixed(1)} hours</strong> this week</li>
-          <li>Goal achievement: <strong>${(weeklyData.goalAchievement * 100).toFixed(0)}%</strong></li>
-        </ul>
+      <div style="background-color: #f5f8ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <div style="margin-bottom: 15px;">
+          <span style="font-weight: bold; color: #4a6ee0;">Average Daily Score:</span> 
+          <span style="font-size: 18px;">${weeklyData.averageDailyScore.toFixed(1)}/10</span>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <span style="font-weight: bold; color: #4a6ee0;">Top Category:</span> 
+          <span style="font-size: 18px;">${weeklyData.topCategory} (${weeklyData.topCategoryHours.toFixed(1)} hours)</span>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <span style="font-weight: bold; color: #4a6ee0;">Total Tracked Time:</span> 
+          <span style="font-size: 18px;">${weeklyData.totalTrackedHours.toFixed(1)} hours</span>
+        </div>
+        <div>
+          <span style="font-weight: bold; color: #4a6ee0;">Unaccounted Time:</span> 
+          <span style="font-size: 18px;">${weeklyData.unaccountedHours.toFixed(1)} hours</span>
+        </div>
       </div>
       
-      <h3>Top Categories</h3>
-      <table style="width: 100%; border-collapse: collapse;">
-        <tr style="background-color: #f1f5f9;">
-          <th style="text-align: left; padding: 8px;">Category</th>
-          <th style="text-align: left; padding: 8px;">Hours</th>
-        </tr>
-        ${categoriesHtml}
-      </table>
+      <div style="margin: 30px 0; text-align: center;">
+        <a href="https://timetracker.app/dashboard" style="background-color: #4a6ee0; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View Full Report</a>
+      </div>
       
-      <p style="margin-top: 30px;">
-        <a href="${process.env.APP_URL || 'https://your-app-url.com'}/history" 
-           style="background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-          View Full Report
-        </a>
-      </p>
-      
-      <p style="margin-top: 30px; font-size: 12px; color: #666;">
-        You received this email because you enabled weekly summaries in your notification settings.
-        <br>To update your preferences, visit the Settings page in your dashboard.
-      </p>
+      <p>Keep up the good work!</p>
+      <p>Best regards,<br>Time Tracker Team</p>
     </div>
   `;
 
   return sendEmail({
     to,
-    from: 'notifications@timetracker.com',
+    from: 'noreply@timetracker.app',
     subject,
-    html,
+    text,
+    html
   });
 }
 
@@ -165,47 +161,64 @@ export async function sendWeeklySummary(
 export async function sendGoalAchievement(
   to: string, 
   username: string, 
-  goalData: { 
-    categoryName: string,
-    goalHours: number,
-    actualHours: number
+  goalData: {
+    category: string;
+    targetHours: number;
+    actualHours: number;
+    date: Date;
   }
 ): Promise<boolean> {
-  const subject = `Goal Achieved: ${goalData.categoryName}`;
+  const subject = 'Time Tracker - Goal Achievement';
+  const formattedDate = goalData.date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
   
+  const text = `Hello ${username},\n\n
+Congratulations! You've achieved your time goal for ${goalData.category}.\n
+Target: ${goalData.targetHours.toFixed(1)} hours
+Actual: ${goalData.actualHours.toFixed(1)} hours
+Date: ${formattedDate}\n\n
+Keep up the great work!\n\n
+Best regards,\nTime Tracker Team`;
+
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2>Congratulations, ${username}!</h2>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #4a6ee0;">Goal Achievement</h2>
+      <p>Hello ${username},</p>
+      <p style="font-size: 18px;">🎉 <strong>Congratulations!</strong> 🎉</p>
+      <p>You've achieved your time goal for <strong>${goalData.category}</strong>.</p>
       
-      <div style="background-color: #f0fdf4; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #22c55e;">
-        <h3 style="margin-top: 0; color: #15803d;">🎯 You've achieved your goal!</h3>
-        <p>You've reached your target for <strong>${goalData.categoryName}</strong>:</p>
-        <ul>
-          <li>Goal: ${goalData.goalHours} hours</li>
-          <li>Actual: ${goalData.actualHours.toFixed(1)} hours</li>
-        </ul>
+      <div style="background-color: #f5f8ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <div style="margin-bottom: 15px;">
+          <span style="font-weight: bold; color: #4a6ee0;">Target:</span> 
+          <span style="font-size: 18px;">${goalData.targetHours.toFixed(1)} hours</span>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <span style="font-weight: bold; color: #4a6ee0;">Actual:</span> 
+          <span style="font-size: 18px;">${goalData.actualHours.toFixed(1)} hours</span>
+        </div>
+        <div>
+          <span style="font-weight: bold; color: #4a6ee0;">Date:</span> 
+          <span style="font-size: 18px;">${formattedDate}</span>
+        </div>
       </div>
       
-      <p>Keep up the great work! Consistent effort is the key to long-term success.</p>
+      <div style="margin: 30px 0; text-align: center;">
+        <a href="https://timetracker.app/dashboard" style="background-color: #4a6ee0; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View Dashboard</a>
+      </div>
       
-      <p style="margin-top: 30px;">
-        <a href="${process.env.APP_URL || 'https://your-app-url.com'}" 
-           style="background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-          View Your Dashboard
-        </a>
-      </p>
-      
-      <p style="margin-top: 30px; font-size: 12px; color: #666;">
-        You received this email because you enabled goal achievement notifications in your settings.
-        <br>To update your preferences, visit the Settings page in your dashboard.
-      </p>
+      <p>Keep up the great work!</p>
+      <p>Best regards,<br>Time Tracker Team</p>
     </div>
   `;
 
   return sendEmail({
     to,
-    from: 'notifications@timetracker.com',
+    from: 'noreply@timetracker.app',
     subject,
-    html,
+    text,
+    html
   });
 }

@@ -6,6 +6,7 @@ const storage = new ImprovedDatabaseStorage();
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { addDays, startOfDay, endOfDay, format } from "date-fns";
 import { DailyEntryWithDetails } from "../shared/schema";
+import { sendDailyReminder, sendWeeklySummary, sendGoalAchievement } from "./services/email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
