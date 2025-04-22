@@ -17,8 +17,12 @@ import type {
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { db, pool } from "./db";
+import { eq, and, desc, between, gte, lte } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User methods
@@ -62,7 +66,7 @@ export interface IStorage {
   getDashboardData(userId: number, date: Date): Promise<any>;
 
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 }
 
 export class MemStorage implements IStorage {
@@ -79,7 +83,7 @@ export class MemStorage implements IStorage {
   currentEntryId: number;
   currentTimeRecordId: number;
   currentHabitRecordId: number;
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 
   constructor() {
     this.users = new Map();
@@ -411,4 +415,336 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  sessionStore: any;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true
+    });
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [createdUser] = await db.insert(users).values(user).returning();
+    return createdUser;
+  }
+
+  // Category methods
+  async getCategories(userId: number): Promise<CategoryWithSubcategories[]> {
+    const userCategories = await db.select().from(categories)
+      .where(eq(categories.userId, userId))
+      .orderBy(categories.order);
+
+    const result: CategoryWithSubcategories[] = [];
+    
+    for (const category of userCategories) {
+      const subList = await this.getSubcategories(category.id);
+      result.push({
+        ...category,
+        subcategories: subList
+      });
+    }
+    
+    return result;
+  }
+
+  async getCategory(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [createdCategory] = await db.insert(categories).values(category).returning();
+    return createdCategory;
+  }
+
+  async updateCategory(id: number, category: Partial<InsertCategory>): Promise<Category | undefined> {
+    const [updatedCategory] = await db.update(categories)
+      .set(category)
+      .where(eq(categories.id, id))
+      .returning();
+    return updatedCategory;
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    // Get subcategories to delete
+    const subcats = await this.getSubcategories(id);
+    
+    // Delete each subcategory (which will also delete related time/habit records)
+    for (const subcat of subcats) {
+      await this.deleteSubcategory(subcat.id);
+    }
+    
+    // Delete the category itself
+    await db.delete(categories).where(eq(categories.id, id));
+  }
+
+  // Subcategory methods
+  async getSubcategory(id: number): Promise<Subcategory | undefined> {
+    const [subcategory] = await db.select().from(subcategories).where(eq(subcategories.id, id));
+    return subcategory;
+  }
+
+  async getSubcategories(categoryId: number): Promise<Subcategory[]> {
+    return db.select().from(subcategories).where(eq(subcategories.categoryId, categoryId));
+  }
+
+  async createSubcategory(subcategory: InsertSubcategory): Promise<Subcategory> {
+    const [createdSubcategory] = await db.insert(subcategories).values(subcategory).returning();
+    return createdSubcategory;
+  }
+
+  async updateSubcategory(id: number, subcategory: Partial<InsertSubcategory>): Promise<Subcategory | undefined> {
+    const [updatedSubcategory] = await db.update(subcategories)
+      .set(subcategory)
+      .where(eq(subcategories.id, id))
+      .returning();
+    return updatedSubcategory;
+  }
+
+  async deleteSubcategory(id: number): Promise<void> {
+    // First delete time records and habit records associated with this subcategory
+    await db.delete(timeRecords).where(eq(timeRecords.subcategoryId, id));
+    await db.delete(habitRecords).where(eq(habitRecords.subcategoryId, id));
+    
+    // Then delete the subcategory
+    await db.delete(subcategories).where(eq(subcategories.id, id));
+  }
+
+  // Daily entry methods
+  async getDailyEntry(id: number): Promise<DailyEntry | undefined> {
+    const [entry] = await db.select().from(dailyEntries).where(eq(dailyEntries.id, id));
+    return entry;
+  }
+
+  async getDailyEntryByDate(userId: number, date: Date): Promise<DailyEntryWithDetails | undefined> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    // Find the daily entry for this date
+    const [entry] = await db.select().from(dailyEntries)
+      .where(
+        and(
+          eq(dailyEntries.userId, userId),
+          gte(dailyEntries.date, startOfDay),
+          lte(dailyEntries.date, endOfDay)
+        )
+      );
+    
+    if (!entry) return undefined;
+    
+    // Get time records for this entry
+    const entryTimeRecords = await db.select().from(timeRecords)
+      .where(eq(timeRecords.entryId, entry.id));
+    
+    // Get habit records for this entry
+    const entryHabitRecords = await db.select().from(habitRecords)
+      .where(eq(habitRecords.entryId, entry.id));
+    
+    // Enrich records with subcategory and category info
+    const timeRecordsWithDetails = [];
+    for (const record of entryTimeRecords) {
+      const subcategory = await this.getSubcategory(record.subcategoryId);
+      if (subcategory) {
+        const category = await this.getCategory(subcategory.categoryId);
+        if (category) {
+          timeRecordsWithDetails.push({
+            ...record,
+            subcategory: { ...subcategory, category }
+          });
+        }
+      }
+    }
+    
+    const habitRecordsWithDetails = [];
+    for (const record of entryHabitRecords) {
+      const subcategory = await this.getSubcategory(record.subcategoryId);
+      if (subcategory) {
+        const category = await this.getCategory(subcategory.categoryId);
+        if (category) {
+          habitRecordsWithDetails.push({
+            ...record,
+            subcategory: { ...subcategory, category }
+          });
+        }
+      }
+    }
+    
+    return {
+      ...entry,
+      timeRecords: timeRecordsWithDetails,
+      habitRecords: habitRecordsWithDetails
+    };
+  }
+
+  async createDailyEntry(entry: InsertDailyEntry): Promise<DailyEntry> {
+    const [createdEntry] = await db.insert(dailyEntries).values(entry).returning();
+    return createdEntry;
+  }
+
+  async updateDailyEntry(id: number, entry: Partial<InsertDailyEntry>): Promise<DailyEntry | undefined> {
+    const [updatedEntry] = await db.update(dailyEntries)
+      .set(entry)
+      .where(eq(dailyEntries.id, id))
+      .returning();
+    return updatedEntry;
+  }
+
+  // Time record methods
+  async createTimeRecord(record: InsertTimeRecord): Promise<TimeRecord> {
+    const [createdRecord] = await db.insert(timeRecords).values(record).returning();
+    return createdRecord;
+  }
+
+  async updateTimeRecord(entryId: number, subcategoryId: number, minutes: number): Promise<TimeRecord | undefined> {
+    // Check if record already exists
+    const [existingRecord] = await db.select().from(timeRecords)
+      .where(
+        and(
+          eq(timeRecords.entryId, entryId),
+          eq(timeRecords.subcategoryId, subcategoryId)
+        )
+      );
+    
+    if (!existingRecord) {
+      // Create new record
+      return this.createTimeRecord({
+        entryId,
+        subcategoryId,
+        minutes
+      });
+    }
+    
+    // Update existing record
+    const [updatedRecord] = await db.update(timeRecords)
+      .set({ minutes })
+      .where(eq(timeRecords.id, existingRecord.id))
+      .returning();
+    return updatedRecord;
+  }
+
+  // Habit record methods
+  async createHabitRecord(record: InsertHabitRecord): Promise<HabitRecord> {
+    const [createdRecord] = await db.insert(habitRecords).values(record).returning();
+    return createdRecord;
+  }
+
+  async updateHabitRecord(entryId: number, subcategoryId: number, completed: boolean): Promise<HabitRecord | undefined> {
+    // Check if record already exists
+    const [existingRecord] = await db.select().from(habitRecords)
+      .where(
+        and(
+          eq(habitRecords.entryId, entryId),
+          eq(habitRecords.subcategoryId, subcategoryId)
+        )
+      );
+    
+    if (!existingRecord) {
+      // Create new record
+      return this.createHabitRecord({
+        entryId,
+        subcategoryId,
+        completed
+      });
+    }
+    
+    // Update existing record
+    const [updatedRecord] = await db.update(habitRecords)
+      .set({ completed })
+      .where(eq(habitRecords.id, existingRecord.id))
+      .returning();
+    return updatedRecord;
+  }
+
+  // Setup default categories
+  async setupDefaultCategories(userId: number): Promise<void> {
+    for (let i = 0; i < defaultCategories.length; i++) {
+      const cat = defaultCategories[i];
+      const category = await this.createCategory({
+        userId,
+        name: cat.name,
+        color: cat.color,
+        icon: cat.icon,
+        goalHours: cat.goalHours,
+        order: i
+      });
+      
+      // Create subcategories
+      for (const sub of cat.subcategories) {
+        await this.createSubcategory({
+          categoryId: category.id,
+          name: sub.name,
+          goalMinutes: sub.goalMinutes,
+          goalType: sub.goalType
+        });
+      }
+    }
+  }
+
+  // Dashboard data method
+  async getDashboardData(userId: number, date: Date): Promise<any> {
+    const entry = await this.getDailyEntryByDate(userId, date);
+    const categories = await this.getCategories(userId);
+    
+    const categoryData = categories.map(category => {
+      let actualMinutes = 0;
+      
+      if (entry) {
+        const categoryTimeRecords = entry.timeRecords.filter(
+          record => record.subcategory.categoryId === category.id
+        );
+        
+        actualMinutes = categoryTimeRecords.reduce(
+          (sum, record) => sum + record.minutes,
+          0
+        );
+      }
+      
+      const actualHours = actualMinutes / 60;
+      const progress = category.goalHours > 0 ? (actualHours / category.goalHours) * 100 : 0;
+      
+      return {
+        ...category,
+        actualHours,
+        progress: Math.min(progress, 100)
+      };
+    });
+    
+    // Calculate metrics
+    const dailyScore = entry?.dailyScore || 0;
+    const motivationLevel = entry?.motivationLevel || 0;
+    const sleepDuration = entry?.sleepHours || 0;
+    const healthBalance = entry?.healthBalance || 0;
+    
+    return {
+      dailyScore,
+      motivationLevel,
+      sleepDuration,
+      healthBalance,
+      categories: categoryData
+    };
+  }
+}
+
+// Use the database storage implementation
+export const storage = new DatabaseStorage();
