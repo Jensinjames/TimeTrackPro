@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CategoryWithSubcategories, DashboardData } from "@shared/schema";
@@ -24,8 +24,16 @@ export default function Dashboard() {
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   
-  const { data: dashboardData, isLoading } = useQuery<DashboardData>({
+  // Fetch categories to ensure we have the latest data
+  const { data: categoriesData } = useQuery<CategoryWithSubcategories[]>({
+    queryKey: ['/api/categories', user?.id],
+    enabled: !!user,
+  });
+  
+  // Fetch dashboard data
+  const { data: dashboardData, isLoading, refetch: refetchDashboard } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard', user?.id, date.toISOString().split('T')[0]],
     enabled: !!user,
   });
@@ -299,14 +307,27 @@ export default function Dashboard() {
       
       <DailyEntryForm
         open={dailyEntryOpen}
-        onOpenChange={setDailyEntryOpen}
+        onOpenChange={(isOpen) => {
+          setDailyEntryOpen(isOpen);
+          if (!isOpen) {
+            // Refetch dashboard data when the form closes to ensure latest data
+            refetchDashboard();
+          }
+        }}
         selectedDate={date}
-        categories={categories}
+        categories={categoriesData || categories}
       />
       
       <CategoryForm
         open={categoryFormOpen}
-        onOpenChange={setCategoryFormOpen}
+        onOpenChange={(isOpen) => {
+          setCategoryFormOpen(isOpen);
+          if (!isOpen) {
+            // Refetch categories and dashboard data when form closes
+            queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
+            refetchDashboard();
+          }
+        }}
       />
     </div>
   );

@@ -39,7 +39,7 @@ export default function DailyEntryForm({
   open, 
   onOpenChange,
   selectedDate,
-  categories,
+  categories: passedCategories,
   currentEntry
 }: DailyEntryFormProps) {
   const { user } = useAuth();
@@ -47,6 +47,15 @@ export default function DailyEntryForm({
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const isEditMode = !!currentEntry;
+  
+  // Fetch latest categories to ensure new ones appear
+  const { data: fetchedCategories, isLoading: isCategoriesLoading } = useQuery<CategoryWithSubcategories[]>({
+    queryKey: ['/api/categories', user?.id],
+    enabled: !!user && open,
+  });
+  
+  // Use fetched categories if available, otherwise use passed categories
+  const categories = fetchedCategories || passedCategories || [];
   
   // Track time and habit records separately
   const [timeRecords, setTimeRecords] = useState<Record<number, number>>({});
