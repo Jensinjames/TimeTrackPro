@@ -1,55 +1,55 @@
-import { AlertCircle } from 'lucide-react';
-import { formatHours } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Progress } from '@/components/ui/progress';
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { AlertCircle, Clock } from 'lucide-react';
 
-type UnaccountedBadgeProps = {
+interface UnaccountedBadgeProps {
   unaccountedMinutes: number;
-  totalMinutes: number; // Total minutes in the period (typically 1440 for a day)
-  showProgress?: boolean;
+  totalMinutes: number;
   className?: string;
-};
+}
 
-export default function UnaccountedBadge({ 
+export default function UnaccountedBadge({
   unaccountedMinutes, 
-  totalMinutes, 
-  showProgress = true, 
-  className = '' 
+  totalMinutes,
+  className
 }: UnaccountedBadgeProps) {
-  // Don't show anything if there's no unaccounted time
-  if (unaccountedMinutes <= 0) return null;
+  // Convert minutes to hours for display
+  const unaccountedHours = (unaccountedMinutes / 60).toFixed(1);
   
-  const unaccountedHours = unaccountedMinutes / 60;
-  const unaccountedPercentage = (unaccountedMinutes / totalMinutes) * 100;
-  const accountedPercentage = 100 - unaccountedPercentage;
+  // Calculate percentage of unaccounted time
+  const percentage = ((unaccountedMinutes / totalMinutes) * 100).toFixed(1);
+  
+  // Determine severity level based on unaccounted percentage
+  const getSeverityColor = () => {
+    if (parseFloat(percentage) > 30) return 'bg-red-100 text-red-800 border-red-300';
+    if (parseFloat(percentage) > 15) return 'bg-amber-100 text-amber-800 border-amber-300';
+    return 'bg-green-100 text-green-800 border-green-300';
+  };
   
   return (
-    <div className={`flex flex-col space-y-2 ${className}`}>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-              <AlertCircle className="h-3 w-3" />
-              <span>Unaccounted: {formatHours(unaccountedHours)}</span>
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>There are {formatHours(unaccountedHours)} not allocated to any category.</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      
-      {showProgress && (
-        <div className="w-full flex flex-col space-y-1">
-          <Progress 
-            value={accountedPercentage} 
-            className="h-2"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Accounted: {accountedPercentage.toFixed(0)}%</span>
-            <span>Unaccounted: {unaccountedPercentage.toFixed(0)}%</span>
-          </div>
+    <div 
+      className={cn(
+        'flex items-center gap-2 p-3 rounded-md border',
+        getSeverityColor(),
+        className
+      )}
+    >
+      <div className="shrink-0">
+        <Clock className="h-5 w-5" />
+      </div>
+      <div className="flex-1">
+        <p className="font-medium">
+          {unaccountedHours} hours ({percentage}%) unaccounted for
+        </p>
+        <p className="text-sm mt-0.5">
+          {parseFloat(percentage) > 15 
+            ? "Try to log more of your activities for better insights"
+            : "Good job tracking your time!"}
+        </p>
+      </div>
+      {parseFloat(percentage) > 15 && (
+        <div className="shrink-0">
+          <AlertCircle className="h-5 w-5" />
         </div>
       )}
     </div>

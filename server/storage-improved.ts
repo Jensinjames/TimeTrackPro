@@ -15,32 +15,28 @@ import type {
   CategoryWithSubcategories,
   DailyEntryWithDetails
 } from "@shared/schema";
-import session from "express-session";
-import createMemoryStore from "memorystore";
-import connectPg from "connect-pg-simple";
-import { db, pool } from "./db";
-import { eq, and, desc, between, gte, lte } from "drizzle-orm";
-import { IStorage } from "./storage";
+import { DatabaseStorage } from "./storage";
+import { db } from "./db";
+import { eq, and, gte, lte } from "drizzle-orm";
 
-const MemoryStore = createMemoryStore(session);
-const PostgresSessionStore = connectPg(session);
-
-// Improved storage implementation with better monthly goal handling
-export class ImprovedDatabaseStorage implements IStorage {
-  sessionStore: any;
-
-  constructor() {
-    this.sessionStore = new PostgresSessionStore({
-      pool,
-      createTableIfMissing: true
-    });
-  }
-  
-  // Dashboard data method with improved goal calculation
-  async getDashboardData(userId: number, date: Date): Promise<any> {
+/**
+ * Improved storage implementation with better handling of:
+ * - Monthly goals
+ * - Unaccounted time tracking
+ */
+export class ImprovedDatabaseStorage extends DatabaseStorage {
+  /**
+   * Override the getDashboardData method to add unaccounted time calculation
+   */
+  override async getDashboardData(userId: number, date: Date): Promise<any> {
+    // Get daily entry and categories from parent methods
     const entry = await this.getDailyEntryByDate(userId, date);
     const categories = await this.getCategories(userId);
     
+    // Track total minutes spent across all categories
+    let totalMinutesSpent = 0;
+    
+    // Map categories and calculate actual time and progress
     const categoryData = categories.map(category => {
       let actualMinutes = 0;
       
@@ -53,18 +49,19 @@ export class ImprovedDatabaseStorage implements IStorage {
           (sum, record) => sum + record.minutes,
           0
         );
+        
+        // Add to total minutes spent
+        totalMinutesSpent += actualMinutes;
       }
       
       const actualHours = actualMinutes / 60;
       
       // Calculate the target hours based on goal period
       let targetGoalHours = category.goalHours;
-      let displayGoal = category.goalHours;
       
       // If using monthly goal, convert to daily equivalent for progress calculation
       if (category.goalPeriod === 'monthly' && category.monthlyGoalHours) {
         targetGoalHours = category.monthlyGoalHours / 30;
-        displayGoal = category.monthlyGoalHours;
       }
       
       // Calculate progress based on the correct goal
@@ -77,6 +74,23 @@ export class ImprovedDatabaseStorage implements IStorage {
       };
     });
     
+    // Calculate unaccounted minutes (total minutes in day minus allocated minutes)
+    let unaccountedMinutes = entry?.unaccountedMinutes;
+    
+    // If no unaccounted minutes are stored and we have an entry, calculate it
+    if ((unaccountedMinutes === undefined || unaccountedMinutes === null) && entry) {
+      unaccountedMinutes = Math.max(0, 1440 - totalMinutesSpent); // 24 hours = 1440 minutes
+      
+      // If we have an entry without unaccounted minutes, update it
+      try {
+        await db.update(dailyEntries)
+          .set({ unaccountedMinutes })
+          .where(eq(dailyEntries.id, entry.id));
+      } catch (error) {
+        console.error("Failed to update entry with unaccounted minutes:", error);
+      }
+    }
+    
     // Calculate metrics
     const dailyScore = entry?.dailyScore || 0;
     const motivationLevel = entry?.motivationLevel || 0;
@@ -88,127 +102,15 @@ export class ImprovedDatabaseStorage implements IStorage {
       motivationLevel,
       sleepDuration,
       healthBalance,
+      unaccountedMinutes, // Include unaccounted minutes in dashboard data
       categories: categoryData
     };
   }
 
-  // This method gets a daily entry with details including time and habit records
-  async getDailyEntryByDate(userId: number, date: Date): Promise<DailyEntryWithDetails | undefined> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    // Get the daily entry
-    const [entry] = await db
-      .select()
-      .from(dailyEntries)
-      .where(
-        and(
-          eq(dailyEntries.userId, userId),
-          gte(dailyEntries.date, startOfDay),
-          lte(dailyEntries.date, endOfDay)
-        )
-      );
-    
-    if (!entry) return undefined;
-    
-    // Get time records with subcategory and category details
-    const entryTimeRecords = await db
-      .select({
-        id: timeRecords.id,
-        entryId: timeRecords.entryId,
-        subcategoryId: timeRecords.subcategoryId,
-        minutes: timeRecords.minutes,
-        subcategory: {
-          id: subcategories.id,
-          categoryId: subcategories.categoryId,
-          name: subcategories.name,
-          goalMinutes: subcategories.goalMinutes,
-          goalType: subcategories.goalType,
-          category: {
-            id: categories.id,
-            userId: categories.userId,
-            name: categories.name,
-            color: categories.color,
-            icon: categories.icon,
-            goalHours: categories.goalHours,
-            monthlyGoalHours: categories.monthlyGoalHours,
-            goalPeriod: categories.goalPeriod,
-            order: categories.order
-          }
-        }
-      })
-      .from(timeRecords)
-      .leftJoin(subcategories, eq(timeRecords.subcategoryId, subcategories.id))
-      .leftJoin(categories, eq(subcategories.categoryId, categories.id))
-      .where(eq(timeRecords.entryId, entry.id));
-    
-    // Get habit records with subcategory and category details
-    const entryHabitRecords = await db
-      .select({
-        id: habitRecords.id,
-        entryId: habitRecords.entryId,
-        subcategoryId: habitRecords.subcategoryId,
-        completed: habitRecords.completed,
-        subcategory: {
-          id: subcategories.id,
-          categoryId: subcategories.categoryId,
-          name: subcategories.name,
-          goalMinutes: subcategories.goalMinutes,
-          goalType: subcategories.goalType,
-          category: {
-            id: categories.id,
-            userId: categories.userId,
-            name: categories.name,
-            color: categories.color,
-            icon: categories.icon,
-            goalHours: categories.goalHours,
-            monthlyGoalHours: categories.monthlyGoalHours,
-            goalPeriod: categories.goalPeriod,
-            order: categories.order
-          }
-        }
-      })
-      .from(habitRecords)
-      .leftJoin(subcategories, eq(habitRecords.subcategoryId, subcategories.id))
-      .leftJoin(categories, eq(subcategories.categoryId, categories.id))
-      .where(eq(habitRecords.entryId, entry.id));
-    
-    // Combine data
-    return {
-      ...entry,
-      timeRecords: entryTimeRecords,
-      habitRecords: entryHabitRecords
-    };
-  }
-
-  // Get all categories with subcategories for a user
-  async getCategories(userId: number): Promise<CategoryWithSubcategories[]> {
-    const userCategories = await db.select().from(categories)
-      .where(eq(categories.userId, userId))
-      .orderBy(categories.order);
-
-    const result: CategoryWithSubcategories[] = [];
-    
-    for (const category of userCategories) {
-      const subcatList = await db
-        .select()
-        .from(subcategories)
-        .where(eq(subcategories.categoryId, category.id));
-      
-      result.push({
-        ...category,
-        subcategories: subcatList
-      });
-    }
-    
-    return result;
-  }
-
-  // Setup default categories with both monthly and daily goals
-  async setupDefaultCategories(userId: number): Promise<void> {
+  /**
+   * Override the setupDefaultCategories method to set up monthly goals
+   */
+  override async setupDefaultCategories(userId: number): Promise<void> {
     for (let i = 0; i < defaultCategories.length; i++) {
       const cat = defaultCategories[i];
       

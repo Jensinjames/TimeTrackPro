@@ -359,11 +359,22 @@ export default function Dashboard() {
             <CardContent className="p-6">
               {/* Display unaccounted time badge if data is available */}
               {(dashboardData.unaccountedMinutes ?? 0) > 0 && (
-                <UnaccountedBadge 
-                  unaccountedMinutes={dashboardData.unaccountedMinutes ?? 0} 
-                  totalMinutes={1440 * (dashboardData.totalDays ?? 1)} 
-                  className="mb-6"
-                />
+                <div className="mb-6">
+                  <h3 className="text-base font-medium mb-2">Time Allocation Analysis</h3>
+                  <p className="mb-3 text-sm text-gray-600">
+                    For the selected {dateRange ? 'period' : 'day'}, you have:
+                  </p>
+                  <UnaccountedBadge 
+                    unaccountedMinutes={dashboardData.unaccountedMinutes ?? 0} 
+                    totalMinutes={1440 * (dashboardData.totalDays ?? 1)} 
+                    className="mb-2"
+                  />
+                  <p className="text-xs text-gray-500 italic">
+                    {dateRange 
+                      ? "This represents time across the selected period that hasn't been tracked in any category."
+                      : "This represents time during the day that hasn't been tracked in any category."}
+                  </p>
+                </div>
               )}
               
               {/* Display time allocation pie charts */}
