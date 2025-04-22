@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { addDays, startOfDay, endOfDay, format } from "date-fns";
-import { DailyEntryWithDetails, DailyEntry } from "../shared/schema";
+import { DailyEntryWithDetails } from "../shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
@@ -216,7 +216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dailyScore,
           motivationLevel,
           healthBalance
-        }) as DailyEntry;
+        });
       }
       
       // Process time records

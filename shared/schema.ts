@@ -59,6 +59,7 @@ export const dailyEntries = pgTable("daily_entries", {
   dailyScore: real("daily_score").default(0),
   motivationLevel: real("motivation_level").default(0),
   healthBalance: real("health_balance").default(0),
+  unaccountedMinutes: integer("unaccounted_minutes").default(0),
 });
 
 export const insertDailyEntrySchema = createInsertSchema(dailyEntries).omit({
