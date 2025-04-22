@@ -20,11 +20,13 @@ import createMemoryStore from "memorystore";
 import connectPg from "connect-pg-simple";
 import { db, pool } from "./db";
 import { eq, and, desc, between, gte, lte } from "drizzle-orm";
+import { IStorage } from "./storage";
 
 const MemoryStore = createMemoryStore(session);
 const PostgresSessionStore = connectPg(session);
 
-export class ImprovedDatabaseStorage {
+// Improved storage implementation with better monthly goal handling
+export class ImprovedDatabaseStorage implements IStorage {
   sessionStore: any;
 
   constructor() {
@@ -57,10 +59,12 @@ export class ImprovedDatabaseStorage {
       
       // Calculate the target hours based on goal period
       let targetGoalHours = category.goalHours;
+      let displayGoal = category.goalHours;
       
       // If using monthly goal, convert to daily equivalent for progress calculation
-      if (category.goalPeriod === 'monthly') {
+      if (category.goalPeriod === 'monthly' && category.monthlyGoalHours) {
         targetGoalHours = category.monthlyGoalHours / 30;
+        displayGoal = category.monthlyGoalHours;
       }
       
       // Calculate progress based on the correct goal
