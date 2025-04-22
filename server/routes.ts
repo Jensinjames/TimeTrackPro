@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { addDays, startOfDay, endOfDay, format } from "date-fns";
+import { DailyEntryWithDetails, DailyEntry } from "../shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
@@ -265,7 +266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const entries = await storage.getDailyEntriesInRange(req.user.id, fromDate, toDate);
           
           // Process entries to create time allocation data
-          const timeAllocationData = await generateTimeAllocationData(categories, entries);
+          const timeAllocationData = await generateTimeAllocationData(categories, entries as DailyEntryWithDetails[]);
           res.json(timeAllocationData);
           return;
         }
@@ -289,8 +290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const categories = await storage.getCategories(req.user.id);
           const entry = await storage.getDailyEntryByDate(req.user.id, date);
           
-          // Create a single-entry array for our generator function
-          const entries = entry ? [entry] : [];
+                  // Create a single-entry array for our generator function
+          const entries = entry ? [entry as DailyEntryWithDetails] : [];
           const timeAllocationData = await generateTimeAllocationData(categories, entries);
           res.json(timeAllocationData);
           return;

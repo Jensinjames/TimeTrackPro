@@ -182,4 +182,7 @@ export type DashboardData = {
     actualHours: number;
     progress: number;
   })[];
+  // For unaccounted time tracking
+  unaccountedMinutes?: number;
+  totalDays?: number;
 };

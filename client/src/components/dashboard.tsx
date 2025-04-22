@@ -395,10 +395,10 @@ export default function Dashboard() {
           <Card className="mb-6">
             <CardContent className="p-6">
               {/* Display unaccounted time badge if data is available */}
-              {dashboardData.unaccountedMinutes > 0 && (
+              {(dashboardData.unaccountedMinutes ?? 0) > 0 && (
                 <UnaccountedBadge 
-                  unaccountedMinutes={dashboardData.unaccountedMinutes || 0} 
-                  totalMinutes={1440 * (dashboardData.totalDays || 1)} 
+                  unaccountedMinutes={dashboardData.unaccountedMinutes ?? 0} 
+                  totalMinutes={1440 * (dashboardData.totalDays ?? 1)} 
                   className="mb-6"
                 />
               )}
