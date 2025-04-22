@@ -155,22 +155,22 @@ export default function CategoryDetail({
       animate="visible"
     >
       <motion.div 
-        className="flex justify-between items-start"
+        className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-0"
         variants={itemVariants}
       >
         <div className="flex items-center space-x-4">
           <motion.div 
             className={`
-              h-12 w-12 rounded-full ${colorStyle.light} 
-              flex items-center justify-center
+              h-10 w-10 sm:h-12 sm:w-12 rounded-full ${colorStyle.light} 
+              flex items-center justify-center flex-shrink-0
             `}
             variants={iconVariants}
           >
-            <i className={`${iconClass} ${colorStyle.text} text-lg`}></i>
+            <i className={`${iconClass} ${colorStyle.text} text-base sm:text-lg`}></i>
           </motion.div>
           <div>
             <motion.h2 
-              className="text-2xl font-bold"
+              className="text-xl sm:text-2xl font-bold"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
@@ -203,18 +203,18 @@ export default function CategoryDetail({
         </div>
         
         <motion.div 
-          className="space-x-2"
+          className="flex space-x-2 w-full sm:w-auto mt-2 sm:mt-0"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          <Button variant="outline" size="sm">
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
+          <Button variant="outline" size="sm" className="flex-1 sm:flex-auto">
+            <Pencil className="h-4 w-4 mr-1 sm:mr-2" />
+            <span>Edit</span>
           </Button>
-          <Button variant="destructive" size="sm">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
+          <Button variant="destructive" size="sm" className="flex-1 sm:flex-auto">
+            <Trash2 className="h-4 w-4 mr-1 sm:mr-2" />
+            <span>Delete</span>
           </Button>
         </motion.div>
       </motion.div>
@@ -231,24 +231,24 @@ export default function CategoryDetail({
         transition={{ delay: 0.5 }}
       >
         <Tabs defaultValue="subcategories" className="mt-8">
-          <TabsList>
-            <TabsTrigger value="subcategories">Subcategories</TabsTrigger>
-            <TabsTrigger value="timetrend">Time Trend</TabsTrigger>
+          <TabsList className="w-full flex overflow-x-auto">
+            <TabsTrigger value="subcategories" className="flex-1">Subcategories</TabsTrigger>
+            <TabsTrigger value="timetrend" className="flex-1">Time Trend</TabsTrigger>
           </TabsList>
           
           <TabsContent value="subcategories" className="mt-6">
             <Card>
               <CardContent className="p-6">
                 <motion.div 
-                  className="flex justify-between items-center mb-4"
+                  className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.6 }}
                 >
                   <h3 className="font-medium text-lg">Subcategories</h3>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Subcategory
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span>Add Subcategory</span>
                   </Button>
                 </motion.div>
                 
@@ -313,9 +313,9 @@ export default function CategoryDetail({
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add your first subcategory
+                      <Button className="w-full sm:w-auto">
+                        <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+                        <span className="whitespace-nowrap">Add your first subcategory</span>
                       </Button>
                     </motion.div>
                   </motion.div>

@@ -113,7 +113,7 @@ export default function Dashboard() {
   });
   
   const renderMetrics = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
       <SummaryCard
         title="Daily Score"
         value={formatPercent(dailyScore)}
@@ -300,10 +300,10 @@ export default function Dashboard() {
       {renderMetrics()}
       
       <Tabs defaultValue="overview" className="mt-8">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="time">Time Tracking</TabsTrigger>
-          <TabsTrigger value="habits">Habits</TabsTrigger>
+        <TabsList className="w-full flex overflow-x-auto">
+          <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
+          <TabsTrigger value="time" className="flex-1">Time Tracking</TabsTrigger>
+          <TabsTrigger value="habits" className="flex-1">Habits</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="mt-6">

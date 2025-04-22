@@ -106,24 +106,24 @@ export default function SummaryCard({
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div className={`${colorStyle.bg} h-1`}></div>
-          <div className="p-5">
+          <div className="p-4 sm:p-5">
             <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-medium">{title}</h3>
-                <p className="text-sm text-gray-500">{subtitle}</p>
+              <div className="flex-1 min-w-0 pr-2">
+                <h3 className="font-medium text-sm sm:text-base truncate">{title}</h3>
+                <p className="text-xs sm:text-sm text-gray-500 truncate">{subtitle}</p>
               </div>
               <motion.div 
                 className={`
-                  h-10 w-10 rounded-full ${colorStyle.light} 
-                  flex items-center justify-center
+                  h-9 w-9 sm:h-10 sm:w-10 rounded-full ${colorStyle.light} 
+                  flex items-center justify-center flex-shrink-0
                 `}
                 variants={iconVariants}
               >
-                <i className={`${icon} ${colorStyle.text}`}></i>
+                <i className={`${icon} ${colorStyle.text} text-sm sm:text-base`}></i>
               </motion.div>
             </div>
             <motion.p 
-              className={`text-2xl font-bold mt-4 ${colorStyle.text}`}
+              className={`text-xl sm:text-2xl font-bold mt-3 sm:mt-4 ${colorStyle.text}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.5 }}
