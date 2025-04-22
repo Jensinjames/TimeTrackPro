@@ -247,15 +247,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/dashboard", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
-    const dateParam = req.query.date as string || new Date().toISOString();
-    const date = new Date(dateParam);
+    // Support both single date and date range
+    const dateParam = req.query.date as string;
+    const fromParam = req.query.from as string;
+    const toParam = req.query.to as string;
     
-    try {
-      const dashboardData = await storage.getDashboardData(req.user.id, date);
-      res.json(dashboardData);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      res.status(500).json({ message: "Failed to fetch dashboard data" });
+    // If date range is provided, use it
+    if (fromParam && toParam) {
+      try {
+        const fromDate = new Date(fromParam);
+        const toDate = new Date(toParam);
+        
+        // Since our storage doesn't have a date range method yet,
+        // we'll use the regular dashboard data for now
+        // TODO: Implement actual date range aggregation
+        const dashboardData = await storage.getDashboardData(req.user.id, toDate);
+        res.json(dashboardData);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        res.status(500).json({ message: "Failed to fetch dashboard data" });
+      }
+    } else {
+      // Fall back to single date behavior
+      const date = new Date(dateParam || new Date().toISOString());
+      
+      try {
+        const dashboardData = await storage.getDashboardData(req.user.id, date);
+        res.json(dashboardData);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        res.status(500).json({ message: "Failed to fetch dashboard data" });
+      }
     }
   });
   
