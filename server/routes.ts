@@ -571,6 +571,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Email notification test endpoint
+  app.post("/api/notifications/test", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { type } = req.body;
+      
+      // Get user's email and name
+      const userEmail = req.user.email;
+      const userName = req.user.name || req.user.username;
+      
+      let success = false;
+      
+      switch (type) {
+        case 'daily':
+          // Send a test daily reminder
+          success = await sendDailyReminder(userEmail, userName);
+          break;
+          
+        case 'weekly':
+          // Send a test weekly summary with sample data
+          success = await sendWeeklySummary(userEmail, userName, {
+            averageDailyScore: 7.5,
+            topCategory: "Work",
+            topCategoryHours: 32.5,
+            totalTrackedHours: 112,
+            unaccountedHours: 8.5
+          });
+          break;
+          
+        case 'goal':
+          // Send a test goal achievement notification
+          success = await sendGoalAchievement(userEmail, userName, {
+            category: "Exercise",
+            targetHours: 5,
+            actualHours: 6.2,
+            date: new Date()
+          });
+          break;
+          
+        default:
+          return res.status(400).json({ message: "Invalid notification type" });
+      }
+      
+      if (success) {
+        res.json({ message: `Test ${type} notification sent successfully` });
+      } else {
+        res.status(500).json({ message: `Failed to send test ${type} notification` });
+      }
+    } catch (error) {
+      console.error("Error sending test notification:", error);
+      res.status(500).json({ message: "Failed to send test notification" });
+    }
+  });
+  
   // Create time record
   app.post("/api/time-records", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
