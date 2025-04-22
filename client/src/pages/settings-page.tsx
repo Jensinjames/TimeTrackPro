@@ -57,14 +57,85 @@ function CategorySettings() {
   
   const [activeCategory, setActiveCategory] = useState<any>(null);
   const [editingSubcategory, setEditingSubcategory] = useState<any>(null);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [isAddingSubcategory, setIsAddingSubcategory] = useState(false);
+  const [newCategory, setNewCategory] = useState({
+    name: "",
+    icon: "sun",
+    color: "#3b82f6",
+    goalHours: 1
+  });
+  const [newSubcategory, setNewSubcategory] = useState({
+    name: "",
+    goalType: "time",
+    goalMinutes: 30,
+    categoryId: 0
+  });
   
   // Handle category selection
   const handleCategorySelect = (category: any) => {
     setActiveCategory(category);
     setEditingSubcategory(null);
+    setIsAddingSubcategory(false);
   };
   
   // Mutations
+  const createCategoryMutation = useMutation({
+    mutationFn: async (category: any) => {
+      const res = await apiRequest("POST", "/api/categories", category);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      setIsAddingCategory(false);
+      setNewCategory({
+        name: "",
+        icon: "sun",
+        color: "#3b82f6",
+        goalHours: 1
+      });
+      toast({
+        title: "Category created",
+        description: "Category has been created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to create category",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createSubcategoryMutation = useMutation({
+    mutationFn: async (subcategory: any) => {
+      const res = await apiRequest("POST", "/api/subcategories", subcategory);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      setIsAddingSubcategory(false);
+      setNewSubcategory({
+        name: "",
+        goalType: "time",
+        goalMinutes: 30,
+        categoryId: 0
+      });
+      toast({
+        title: "Subcategory created",
+        description: "Subcategory has been created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to create subcategory",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
   const updateCategoryMutation = useMutation({
     mutationFn: async (updatedCategory: any) => {
       const res = await apiRequest("PATCH", `/api/categories/${updatedCategory.id}`, updatedCategory);
@@ -102,6 +173,26 @@ function CategorySettings() {
     onError: (error) => {
       toast({
         title: "Failed to update subcategory",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const deleteSubcategoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/subcategories/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      toast({
+        title: "Subcategory deleted",
+        description: "Subcategory has been deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to delete subcategory",
         description: error.message,
         variant: "destructive",
       });
@@ -146,10 +237,113 @@ function CategorySettings() {
             ))}
           </div>
           
-          <Button className="w-full mt-4">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Category
-          </Button>
+          {isAddingCategory ? (
+            <div className="mt-4 border rounded-md p-4 space-y-3">
+              <h3 className="text-sm font-medium">Add New Category</h3>
+              <div className="space-y-3">
+                <div>
+                  <Label>Name</Label>
+                  <Input 
+                    value={newCategory.name} 
+                    onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                    placeholder="Enter category name"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Icon</Label>
+                    <Select
+                      value={newCategory.icon}
+                      onValueChange={(value) => setNewCategory({...newCategory, icon: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select icon" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pray">
+                          <div className="flex items-center">
+                            <i className="fas fa-pray mr-2"></i>
+                            <span>Pray</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="sun">
+                          <div className="flex items-center">
+                            <i className="fas fa-sun mr-2"></i>
+                            <span>Sun</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="briefcase">
+                          <div className="flex items-center">
+                            <i className="fas fa-briefcase mr-2"></i>
+                            <span>Briefcase</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="heart">
+                          <div className="flex items-center">
+                            <i className="fas fa-heart mr-2"></i>
+                            <span>Heart</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label>Goal (hours)</Label>
+                    <Select
+                      value={newCategory.goalHours.toString()}
+                      onValueChange={(value) => setNewCategory({...newCategory, goalHours: parseFloat(value)})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select hours" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {hourOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label>Color</Label>
+                  <Input 
+                    type="color"
+                    value={newCategory.color} 
+                    onChange={(e) => setNewCategory({...newCategory, color: e.target.value})}
+                    className="h-10"
+                  />
+                </div>
+                
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setIsAddingCategory(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => createCategoryMutation.mutate(newCategory)}
+                    disabled={createCategoryMutation.isPending || !newCategory.name}
+                  >
+                    {createCategoryMutation.isPending ? "Creating..." : "Create Category"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Button 
+              className="w-full mt-4"
+              onClick={() => setIsAddingCategory(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Category
+            </Button>
+          )}
         </CardContent>
       </Card>
       
@@ -264,13 +458,84 @@ function CategorySettings() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-medium text-gray-700">Subcategories</h3>
-                  <Button size="sm" variant="outline">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => {
+                      setNewSubcategory({
+                        ...newSubcategory,
+                        categoryId: activeCategory.id
+                      });
+                      setIsAddingSubcategory(true);
+                    }}
+                  >
                     <Plus className="h-3 w-3 mr-1" />
                     Add Subcategory
                   </Button>
                 </div>
                 
                 <div className="space-y-2">
+                  {isAddingSubcategory && (
+                    <div className="p-3 rounded-md border border-blue-200 bg-blue-50 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Name</Label>
+                          <Input 
+                            value={newSubcategory.name} 
+                            onChange={(e) => setNewSubcategory({...newSubcategory, name: e.target.value})}
+                            placeholder="Enter name"
+                            size="sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Type</Label>
+                          <Select
+                            value={newSubcategory.goalType}
+                            onValueChange={(value) => setNewSubcategory({...newSubcategory, goalType: value})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="time">Time</SelectItem>
+                              <SelectItem value="binary">True/False</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      {newSubcategory.goalType === "time" && (
+                        <div>
+                          <Label className="text-xs">Goal (minutes)</Label>
+                          <Input 
+                            type="number"
+                            value={newSubcategory.goalMinutes} 
+                            onChange={(e) => setNewSubcategory({
+                              ...newSubcategory, 
+                              goalMinutes: parseInt(e.target.value)
+                            })}
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-end space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setIsAddingSubcategory(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          size="sm"
+                          onClick={() => createSubcategoryMutation.mutate(newSubcategory)}
+                          disabled={createSubcategoryMutation.isPending || !newSubcategory.name}
+                        >
+                          {createSubcategoryMutation.isPending ? "Creating..." : "Create"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   {activeCategory.subcategories.map((subcategory: any) => (
                     <div 
                       key={subcategory.id}
