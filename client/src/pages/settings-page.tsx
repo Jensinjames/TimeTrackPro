@@ -622,7 +622,13 @@ function CategorySettings() {
                             >
                               Edit
                             </Button>
-                            <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => deleteSubcategoryMutation.mutate(subcategory.id)}
+                              disabled={deleteSubcategoryMutation.isPending}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

@@ -275,6 +275,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch history data" });
     }
   });
+  
+  // Create time record
+  app.post("/api/time-records", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { entryId, subcategoryId, minutes } = req.body;
+      
+      // Validate entry belongs to user
+      const entry = await storage.getDailyEntry(entryId);
+      if (!entry || entry.userId !== req.user.id) {
+        return res.status(404).json({ message: "Entry not found" });
+      }
+      
+      const record = await storage.createTimeRecord({
+        entryId,
+        subcategoryId,
+        minutes
+      });
+      
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Failed to create time record:", error);
+      res.status(500).json({ message: "Failed to create time record" });
+    }
+  });
+  
+  // Create habit record
+  app.post("/api/habit-records", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { entryId, subcategoryId, completed } = req.body;
+      
+      // Validate entry belongs to user
+      const entry = await storage.getDailyEntry(entryId);
+      if (!entry || entry.userId !== req.user.id) {
+        return res.status(404).json({ message: "Entry not found" });
+      }
+      
+      const record = await storage.createHabitRecord({
+        entryId,
+        subcategoryId,
+        completed
+      });
+      
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Failed to create habit record:", error);
+      res.status(500).json({ message: "Failed to create habit record" });
+    }
+  });
+  
+  // Update time record
+  app.put("/api/entries/:entryId/time-records/:subcategoryId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const entryId = parseInt(req.params.entryId);
+      const subcategoryId = parseInt(req.params.subcategoryId);
+      const { minutes } = req.body;
+      
+      // Validate entry belongs to user
+      const entry = await storage.getDailyEntry(entryId);
+      if (!entry || entry.userId !== req.user.id) {
+        return res.status(404).json({ message: "Entry not found" });
+      }
+      
+      const record = await storage.updateTimeRecord(entryId, subcategoryId, minutes);
+      
+      if (!record) {
+        return res.status(404).json({ message: "Time record not found" });
+      }
+      
+      res.status(200).json(record);
+    } catch (error) {
+      console.error("Failed to update time record:", error);
+      res.status(500).json({ message: "Failed to update time record" });
+    }
+  });
+  
+  // Update habit record
+  app.put("/api/entries/:entryId/habit-records/:subcategoryId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const entryId = parseInt(req.params.entryId);
+      const subcategoryId = parseInt(req.params.subcategoryId);
+      const { completed } = req.body;
+      
+      // Validate entry belongs to user
+      const entry = await storage.getDailyEntry(entryId);
+      if (!entry || entry.userId !== req.user.id) {
+        return res.status(404).json({ message: "Entry not found" });
+      }
+      
+      const record = await storage.updateHabitRecord(entryId, subcategoryId, completed);
+      
+      if (!record) {
+        return res.status(404).json({ message: "Habit record not found" });
+      }
+      
+      res.status(200).json(record);
+    } catch (error) {
+      console.error("Failed to update habit record:", error);
+      res.status(500).json({ message: "Failed to update habit record" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
