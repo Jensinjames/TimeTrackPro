@@ -251,12 +251,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const dateParam = req.query.date as string;
     const fromParam = req.query.from as string;
     const toParam = req.query.to as string;
+    const viewParam = req.query.view as string;
     
     // If date range is provided, use it
     if (fromParam && toParam) {
       try {
         const fromDate = new Date(fromParam);
         const toDate = new Date(toParam);
+        
+        // If requesting time allocation view, generate specialized data
+        if (viewParam === 'time-allocation') {
+          const categories = await storage.getCategories(req.user.id);
+          const entries = await storage.getDailyEntriesInRange(req.user.id, fromDate, toDate);
+          
+          // Process entries to create time allocation data
+          const timeAllocationData = await generateTimeAllocationData(categories, entries);
+          res.json(timeAllocationData);
+          return;
+        }
         
         // Since our storage doesn't have a date range method yet,
         // we'll use the regular dashboard data for now
@@ -272,6 +284,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const date = new Date(dateParam || new Date().toISOString());
       
       try {
+        // If requesting time allocation view for a single day
+        if (viewParam === 'time-allocation') {
+          const categories = await storage.getCategories(req.user.id);
+          const entry = await storage.getDailyEntryByDate(req.user.id, date);
+          
+          // Create a single-entry array for our generator function
+          const entries = entry ? [entry] : [];
+          const timeAllocationData = await generateTimeAllocationData(categories, entries);
+          res.json(timeAllocationData);
+          return;
+        }
+        
+        // Standard dashboard data
         const dashboardData = await storage.getDashboardData(req.user.id, date);
         res.json(dashboardData);
       } catch (error) {
@@ -280,6 +305,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+  
+  // Helper function to generate time allocation data for pie charts
+  async function generateTimeAllocationData(categories: any[], entries: any[]) {
+    // Calculate unaccounted time (1440 minutes per day - all time records)
+    let totalMinutesSpent = 0;
+    let totalDays = 0;
+    
+    // Initialize category data for reality and goals
+    const categoryRealityMap = new Map();
+    const categoryGoalsMap = new Map();
+    
+    // Set up initial data structure for all categories
+    for (const category of categories) {
+      const goalMinutes = category.goalHours * 60;
+      
+      categoryRealityMap.set(category.id, {
+        name: category.name,
+        value: 0,
+        color: category.color,
+        subcategories: []
+      });
+      
+      categoryGoalsMap.set(category.id, {
+        name: category.name,
+        value: goalMinutes,
+        color: category.color,
+        subcategories: []
+      });
+      
+      // Initialize subcategory data
+      for (const subcategory of category.subcategories || []) {
+        // Ensure subcategory goal is initialized for goals pie
+        const subcategoryGoalData = {
+          name: subcategory.name,
+          value: subcategory.goalMinutes || 0,
+          color: category.color // Use category color with slight variation if needed
+        };
+        
+        const subGoals = categoryGoalsMap.get(category.id);
+        if (subGoals && subGoals.subcategories) {
+          subGoals.subcategories.push(subcategoryGoalData);
+        }
+      }
+    }
+    
+    // Process all entries
+    for (const entry of entries) {
+      // Count the day
+      totalDays++;
+      
+      // Process time records
+      for (const record of entry.timeRecords || []) {
+        const subcategory = record.subcategory;
+        if (!subcategory) continue;
+        
+        const category = subcategory.category;
+        if (!category) continue;
+        
+        const minutes = record.minutes || 0;
+        totalMinutesSpent += minutes;
+        
+        // Add minutes to category total
+        const categoryData = categoryRealityMap.get(category.id);
+        if (categoryData) {
+          categoryData.value += minutes;
+          
+          // Add or update subcategory data
+          const existingSubIndex = categoryData.subcategories.findIndex(
+            (sub: any) => sub.name === subcategory.name
+          );
+          
+          if (existingSubIndex >= 0) {
+            categoryData.subcategories[existingSubIndex].value += minutes;
+          } else {
+            categoryData.subcategories.push({
+              name: subcategory.name,
+              value: minutes,
+              color: category.color // Use category color with slight variation if needed
+            });
+          }
+        }
+      }
+    }
+    
+    // Calculate unaccounted minutes (assuming 24 hours per day)
+    const totalPossibleMinutes = totalDays * 1440;
+    const unaccountedMinutes = Math.max(0, totalPossibleMinutes - totalMinutesSpent);
+    
+    // Convert maps to arrays for the final format
+    const realityData = Array.from(categoryRealityMap.values())
+      .filter((category: any) => category.value > 0);
+      
+    const goalsData = Array.from(categoryGoalsMap.values())
+      .filter((category: any) => category.value > 0);
+    
+    return {
+      reality: realityData,
+      goals: goalsData,
+      unaccountedMinutes,
+      totalDays
+    };
+  }
   
   // Get history data (last 30 days)
   app.get("/api/history", async (req, res) => {

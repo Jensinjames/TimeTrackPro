@@ -17,6 +17,8 @@ import CategoryCard from "./category-card";
 import CategoryDetail from "./category-detail";
 import DailyEntryForm from "./daily-entry-form";
 import CategoryForm from "./category-form";
+import TimePies from "./time-pies";
+import UnaccountedBadge from "./unaccounted-badge";
 
 export default function Dashboard() {
   const [date, setDate] = useState(new Date());
@@ -390,12 +392,19 @@ export default function Dashboard() {
         </TabsContent>
         
         <TabsContent value="time" className="mt-6">
-          <Card>
+          <Card className="mb-6">
             <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Time Tracking</h3>
-              <p className="text-gray-500">
-                Detailed time tracking view coming soon...
-              </p>
+              {/* Display unaccounted time badge if data is available */}
+              {dashboardData.unaccountedMinutes > 0 && (
+                <UnaccountedBadge 
+                  unaccountedMinutes={dashboardData.unaccountedMinutes || 0} 
+                  totalMinutes={1440 * (dashboardData.totalDays || 1)} 
+                  className="mb-6"
+                />
+              )}
+              
+              {/* Display time allocation pie charts */}
+              <TimePies />
             </CardContent>
           </Card>
         </TabsContent>

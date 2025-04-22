@@ -1,172 +1,152 @@
-import { useState, useRef, useEffect } from 'react';
-import { DateRange } from 'react-day-picker';
-import { format, isAfter, isBefore, add, sub } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
+import * as React from "react";
+import { CalendarIcon } from "lucide-react";
+import { addDays, format, isValid } from "date-fns";
+import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/popover";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
-export const presetDays: Record<string, number> = {
-  '7d': 7,
-  '30d': 30,
-  '90d': 90,
-  '6m': 180,
-  '1y': 365,
-  '3y': 1095
-};
-
-type DateRangePickerProps = {
-  value: DateRange | undefined;
-  onChange: (value: DateRange | undefined) => void;
-  align?: 'start' | 'center' | 'end';
+interface DateRangePickerProps {
+  value?: DateRange | undefined;
+  onChange: (range?: DateRange) => void;
+  placeholder?: string;
   className?: string;
   presets?: number[];
-  showCompare?: boolean;
-};
+}
 
 export function DateRangePicker({
   value,
   onChange,
-  align = 'end',
+  placeholder = "Select date range",
   className,
-  presets = [7, 30, 90, 180, 365, 1095],
-  showCompare = false
+  presets = [7, 30, 90],
 }: DateRangePickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
-  const [compareRange, setCompareRange] = useState<DateRange | undefined>();
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const inputRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = React.useState<boolean>(false);
+
+  // Function to create a preset range
+  const createPresetRange = (daysFromToday: number): DateRange => {
+    const endDate = new Date();
+    const startDate = addDays(endDate, -daysFromToday + 1); // +1 to include today
+    return { from: startDate, to: endDate };
+  };
 
   // Handle preset selection
-  const handlePresetChange = (preset: number) => {
-    const end = new Date();
-    const start = sub(end, { days: preset });
-    
-    const range = {
-      from: start,
-      to: end
-    };
-
-    setSelectedPreset(preset.toString());
-    onChange(range);
-
-    if (showCompare) {
-      // Set compare range to previous period
-      const compareEnd = sub(start, { days: 1 });
-      const compareStart = sub(compareEnd, { days: preset });
-      setCompareRange({
-        from: compareStart,
-        to: compareEnd
-      });
-    }
-  };
-
-  // Get preset label from days
-  const getPresetLabel = (days: number): string => {
-    if (days === 7) return '7d';
-    if (days === 30) return '30d';
-    if (days === 90) return '90d';
-    if (days === 180) return '6m';
-    if (days === 365) return '1y';
-    if (days === 1095) return '3y';
-    return `${days}d`;
-  };
-
-  // Format date range for display
-  const formatDateRange = (range: DateRange | undefined) => {
-    if (!range?.from) {
-      return 'Select date range';
+  const handlePresetChange = (value: string) => {
+    if (value === "custom") {
+      // Keep current selection
+      return;
+    } else if (value === "clear") {
+      // Clear the date range selection
+      onChange(undefined);
+      setIsOpen(false);
+      return;
     }
 
-    if (!range.to) {
-      return format(range.from, 'LLL dd, y');
+    // Convert string to number and create preset range
+    const days = parseInt(value, 10);
+    if (!isNaN(days)) {
+      const range = createPresetRange(days);
+      onChange(range);
+      setIsOpen(false);
     }
-
-    return `${format(range.from, 'LLL dd, y')} - ${format(range.to, 'LLL dd, y')}`;
   };
 
   return (
-    <div className={cn('grid gap-2', className)}>
+    <div className={cn("grid gap-2", className)}>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
-            ref={buttonRef}
             id="date"
-            variant={'outline'}
-            size="sm"
+            variant={"outline"}
             className={cn(
-              'h-9 py-1 px-3 justify-between font-normal items-center',
-              !value && 'text-muted-foreground'
+              "w-full justify-start text-left font-normal",
+              !value && "text-muted-foreground"
             )}
           >
-            <div className="flex items-center space-x-1.5">
-              <CalendarIcon className="h-4 w-4" />
-              <span>{formatDateRange(value)}</span>
-            </div>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {value?.from ? (
+              value.to ? (
+                <>
+                  {format(value.from, "LLL dd, y")} -{" "}
+                  {format(value.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(value.from, "LLL dd, y")
+              )
+            ) : (
+              <span>{placeholder}</span>
+            )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent
-          ref={inputRef}
-          className="w-auto p-0"
-          align={align}
-        >
-          <div className="border-b p-3">
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              {presets.map((preset) => (
-                <Button
-                  key={preset}
-                  size="sm"
-                  variant={selectedPreset === preset.toString() ? 'default' : 'outline'}
-                  onClick={() => handlePresetChange(preset)}
-                >
-                  {getPresetLabel(preset)}
-                </Button>
+        <PopoverContent className="w-auto flex flex-col space-y-4 p-4" align="start">
+          {/* Preset dropdown */}
+          <Select
+            onValueChange={handlePresetChange}
+            defaultValue={value ? "custom" : presets[0]?.toString()}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a preset range" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="custom">Custom Range</SelectItem>
+              {presets.map((days) => (
+                <SelectItem key={days} value={days.toString()}>
+                  Last {days} days
+                </SelectItem>
               ))}
-            </div>
-            <div className="flex mt-4 gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setIsOpen(false);
-                  setSelectedPreset(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="flex-1"
-                onClick={() => {
-                  setIsOpen(false);
-                }}
-              >
-                Apply
-              </Button>
-            </div>
+              <SelectItem value="clear">Clear Selection</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Calendar */}
+          <div className="border rounded-md p-3">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={value?.from}
+              selected={value}
+              onSelect={onChange}
+              numberOfMonths={2}
+            />
           </div>
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={value?.from}
-            selected={value}
-            onSelect={onChange}
-            numberOfMonths={2}
-          />
+
+          {/* Action buttons */}
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onChange(undefined);
+                setIsOpen(false);
+              }}
+            >
+              Clear
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (value?.from && !value.to) {
+                  // If only start date is selected, treat as single day
+                  onChange({ from: value.from, to: value.from });
+                }
+                setIsOpen(false);
+              }}
+            >
+              Apply
+            </Button>
+          </div>
         </PopoverContent>
       </Popover>
     </div>
