@@ -92,3 +92,45 @@
   transform: rotate(-90deg);
   transform-origin: 50% 50%;
 }
+
+/* Chart label enhancement */
+.pie-chart-label {
+  font-size: 9px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  fill: white;
+}
+
+/* Improve pie chart links */
+.pie-chart-container text {
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  fill: #333 !important;
+}
+
+/* Better label background for readability */
+.pie-chart-container text {
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pie-chart-container path {
+  stroke-width: 1.5 !important;
+}
+
+@media (max-width: 640px) {
+  .pie-chart-container text {
+    font-size: 8px !important;
+  }
+  
+  .pie-chart-container line {
+    stroke-width: 1px !important;
+  }
+  
+  .pie-chart-container .background {
+    fill: rgba(255, 255, 255, 0.6);
+  }
+}

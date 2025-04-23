@@ -290,28 +290,38 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                 <h4 className="text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">Subcategory Time Allocation</h4>
                 
                 <div className="flex justify-center items-center mx-auto mb-3 md:mb-4">
-                  <div style={{ height: 180, width: 180, maxWidth: '100%' }} className="md:h-[240px] md:w-[240px]">
+                  <div style={{ height: 180, width: 180, maxWidth: '100%' }} className="md:h-[240px] md:w-[240px] pie-chart-container">
                     <ResponsivePie
                       data={subcategoryPieData}
-                      margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
-                      innerRadius={0.5}
+                      margin={{ top: 25, right: 25, bottom: 25, left: 25 }}
+                      innerRadius={0.45}
                       padAngle={0.7}
                       cornerRadius={3}
                       activeOuterRadiusOffset={8}
                       colors={{ datum: 'data.color' }}
                       borderWidth={1}
                       borderColor={{ theme: 'background' }}
-                      enableArcLabels={true}
-                      arcLabel={(d) => `${d.data.label}`}
-                      arcLabelsTextColor="#ffffff"
-                      arcLabelsSkipAngle={15}
-                      arcLabelsRadiusOffset={0.6}
-                      enableArcLinkLabels={false}
+                      enableArcLabels={false}
+                      enableArcLinkLabels={true}
+                      arcLinkLabel={d => {
+                        const label = d.data.label;
+                        return window.innerWidth < 360 
+                          ? (label.length > 5 ? label.substring(0, 4) + '.' : label)
+                          : (label.length > 8 ? label.substring(0, 7) + '.' : label);
+                      }}
+                      arcLinkLabelsSkipAngle={8}
+                      arcLinkLabelsTextColor="#333333"
+                      arcLinkLabelsThickness={1.5}
+                      arcLinkLabelsColor={{ from: 'color' }}
+                      arcLinkLabelsDiagonalLength={window.innerWidth < 360 ? 8 : 12}
+                      arcLinkLabelsStraightLength={window.innerWidth < 360 ? 8 : 14}
+                      arcLinkLabelsTextOffset={2}
+                      arcLinkLabelsOffset={0}
                       theme={{
                         labels: {
                           text: {
-                            fontSize: 10,
-                            fontWeight: 'bold',
+                            fontSize: 9,
+                            fontWeight: 'bold'
                           }
                         },
                         tooltip: {
