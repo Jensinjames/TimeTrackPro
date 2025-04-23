@@ -1,4 +1,5 @@
 import { users, categories, subcategories, dailyEntries, timeRecords, habitRecords, defaultCategories } from "@shared/schema";
+import { v4 as uuidv4 } from 'uuid';
 import type {
   User,
   InsertUser,
@@ -377,14 +378,15 @@ export class MemStorage implements IStorage {
       });
       
       // Create subcategories with display IDs
+      let priority = 1;
       for (const sub of cat.subcategories) {
         await this.createSubcategory({
           categoryId: category.id,
           name: sub.name,
           goalMinutes: sub.goalMinutes,
-          goalType: sub.goalType,
-          displayId: sub.displayId || `${cat.prefix}${sub.priority || 0}`, // Use provided display ID or generate one
-          priority: sub.priority || 0
+          goalType: sub.goalType || "time",
+          displayId: sub.displayId || `${cat.prefix}${priority}`, // Use provided display ID or generate one
+          priority: sub.priority || priority++
         });
       }
     }
@@ -865,16 +867,23 @@ export class DatabaseStorage implements IStorage {
         color: cat.color,
         icon: cat.icon,
         goalHours: cat.goalHours,
+        uuid: uuidv4(), // Generate UUID for category
+        prefix: cat.prefix, // Use prefix from default category 
+        monthlyGoalHours: cat.monthlyGoalHours || 0,
+        goalPeriod: cat.goalPeriod || "daily",
         order: i
       });
       
-      // Create subcategories
+      // Create subcategories with display IDs
+      let priority = 1;
       for (const sub of cat.subcategories) {
         await this.createSubcategory({
           categoryId: category.id,
           name: sub.name,
           goalMinutes: sub.goalMinutes,
-          goalType: sub.goalType
+          goalType: sub.goalType || "time",
+          displayId: sub.displayId || `${cat.prefix}${priority}`, // Use provided display ID or generate one
+          priority: sub.priority || priority++
         });
       }
     }

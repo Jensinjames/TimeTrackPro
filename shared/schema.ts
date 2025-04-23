@@ -30,8 +30,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
 // Categories schema
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
-  uuid: text("uuid").notNull().default(""), // UUID will be set during creation
-  prefix: text("prefix").notNull(), // Add prefix for subcategory naming (e.g., "F" for Faith)
+  uuid: text("uuid").default(""), // UUID will be set during creation
+  prefix: text("prefix").default(""), // Add prefix for subcategory naming (e.g., "F" for Faith)
   userId: integer("user_id").notNull(),
   name: text("name").notNull(),
   color: text("color").notNull(),
@@ -44,6 +44,11 @@ export const categories = pgTable("categories", {
 
 export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
+}).extend({
+  // Make uuid optional in the schema to allow it to be set during creation
+  uuid: z.string().optional(),
+  // Ensure prefix is required
+  prefix: z.string().min(1)
 });
 
 // Subcategories schema
@@ -59,6 +64,12 @@ export const subcategories = pgTable("subcategories", {
 
 export const insertSubcategorySchema = createInsertSchema(subcategories).omit({
   id: true,
+}).extend({
+  // Make display ID and priority optional in schema
+  displayId: z.string().nullable().optional(),
+  priority: z.number().nullable().optional(),
+  // Ensure goalType is properly handled with default value
+  goalType: z.enum(["time", "binary"]).default("time")
 });
 
 // Daily entries schema
