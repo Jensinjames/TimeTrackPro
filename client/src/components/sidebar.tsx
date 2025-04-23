@@ -71,8 +71,8 @@ export default function Sidebar() {
       
       {/* Sidebar */}
       <aside className={`
-        fixed md:sticky top-0 md:top-0 ${isMobile ? "z-40 left-0 h-full w-64 transition-transform duration-300 ease-in-out transform shadow-lg" : "h-screen w-64 md:w-auto"}
-        ${isCollapsed ? "-translate-x-full md:translate-x-0 md:w-16" : "translate-x-0"}
+        fixed md:sticky top-0 md:top-0 ${isMobile ? "z-40 left-0 h-full w-64 transition-transform duration-300 ease-in-out transform shadow-lg" : "h-screen w-[72px]"}
+        ${isCollapsed ? "-translate-x-full md:translate-x-0 md:w-[72px]" : "translate-x-0"}
         bg-background border-r
       `}>
         <div className="flex flex-col h-full">

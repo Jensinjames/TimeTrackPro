@@ -8,6 +8,7 @@ import { DateRangeProvider } from "@/hooks/use-date-range";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useIsMobile } from "@/hooks/use-mobile";
 import HomePage from "@/pages/home-page";
+import DashboardPage from "@/pages/dashboard-page";
 import AuthPage from "@/pages/auth-page";
 // import SettingsPage from "@/pages/settings-page";
 import SettingsPage from "@/pages/settings-page-improved";
@@ -21,7 +22,8 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <Route path="/test-auth" component={TestAuthPage} />
-      <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/" component={DashboardPage} />
+      <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/history" component={HistoryPage} />
       <Route component={NotFound} />
