@@ -76,9 +76,10 @@ function CategoryForm({
     }
   }, [initialCategory]);
   
-  // Create category mutation
+  // Create category mutation with optimistic updates for faster UI response
   const createCategoryMutation = useMutation({
     mutationFn: async (categoryData: CategoryFormData) => {
+      console.log("Creating category:", categoryData);
       const res = await apiRequest("POST", "/api/categories", categoryData);
       if (!res.ok) {
         const errorData = await res.json();
@@ -86,30 +87,64 @@ function CategoryForm({
       }
       return res.json();
     },
+    onMutate: async (newCategory) => {
+      // Cancel outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ["/api/categories"] });
+      
+      // Get current categories data
+      const previousCategories = queryClient.getQueryData(["/api/categories"]);
+      
+      // Create optimistic category entry with temporary ID
+      const optimisticCategory = {
+        ...newCategory,
+        id: Date.now(), // Temporary ID for UI purposes
+        userId: 1, // Assume current user (will be overridden by server)
+        subcategories: [],
+        _optimistic: true // Flag to identify this as an optimistic update
+      };
+      
+      // Update categories cache with optimistic data
+      queryClient.setQueryData(["/api/categories"], (old: any = []) => {
+        return [...old, optimisticCategory];
+      });
+      
+      return { previousCategories };
+    },
     onSuccess: (data) => {
-      // Targeted query invalidation
+      // Update cache with real server data
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       
       toast({
         title: "Category created",
-        description: "Category has been created successfully",
+        description: `${data.name} has been created successfully with ID: ${data.id}`,
       });
       
       if (onSuccess) onSuccess(data);
       onClose();
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
+      // Restore previous state on error
+      if (context?.previousCategories) {
+        queryClient.setQueryData(["/api/categories"], context.previousCategories);
+      }
+      
       toast({
         title: "Failed to create category",
         description: error.message,
         variant: "destructive",
       });
     },
+    onSettled: () => {
+      // Always refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+    }
   });
   
-  // Update category mutation
+  // Update category mutation with optimistic updates for faster UI response
   const updateCategoryMutation = useMutation({
     mutationFn: async (categoryData: CategoryFormData) => {
+      console.log("Updating category:", categoryData);
       const res = await apiRequest("PATCH", `/api/categories/${categoryData.id}`, {
         name: categoryData.name,
         icon: categoryData.icon,
@@ -125,27 +160,87 @@ function CategoryForm({
       
       return res.json();
     },
+    onMutate: async (updatedCategory) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/categories"] });
+      await queryClient.cancelQueries({ queryKey: [`/api/categories/${updatedCategory.id}`] });
+      
+      // Snapshot current data
+      const previousCategories = queryClient.getQueryData(["/api/categories"]);
+      const previousCategory = queryClient.getQueryData([`/api/categories/${updatedCategory.id}`]);
+      
+      // Optimistically update the category list
+      if (previousCategories) {
+        queryClient.setQueryData(["/api/categories"], (old: any = []) => {
+          return old.map((cat: any) => 
+            cat.id === updatedCategory.id 
+              ? { 
+                  ...cat, 
+                  name: updatedCategory.name,
+                  icon: updatedCategory.icon,
+                  color: updatedCategory.color,
+                  goalHours: updatedCategory.goalHours,
+                  goalPeriod: updatedCategory.goalPeriod,
+                  _optimistic: true
+                }
+              : cat
+          );
+        });
+      }
+      
+      // Optimistically update the individual category if it's in cache
+      if (previousCategory) {
+        queryClient.setQueryData([`/api/categories/${updatedCategory.id}`], (old: any) => {
+          return {
+            ...old,
+            name: updatedCategory.name,
+            icon: updatedCategory.icon,
+            color: updatedCategory.color,
+            goalHours: updatedCategory.goalHours,
+            goalPeriod: updatedCategory.goalPeriod,
+            _optimistic: true
+          };
+        });
+      }
+      
+      return { previousCategories, previousCategory };
+    },
     onSuccess: (data) => {
-      // Targeted query invalidation
+      // Update caches with server data
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
-      // Also invalidate dashboard to reflect the changes there
+      queryClient.invalidateQueries({ queryKey: [`/api/categories/${data.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       
       toast({
         title: "Category updated",
-        description: "Category has been updated successfully",
+        description: `${data.name} has been updated successfully with ID: ${data.id}`,
       });
       
       if (onSuccess) onSuccess(data);
       onClose();
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
+      // Restore previous data on error
+      if (context?.previousCategories) {
+        queryClient.setQueryData(["/api/categories"], context.previousCategories);
+      }
+      if (context?.previousCategory) {
+        queryClient.setQueryData([`/api/categories/${variables.id}`], context.previousCategory);
+      }
+      
       toast({
         title: "Failed to update category",
         description: error.message,
         variant: "destructive",
       });
     },
+    onSettled: (data) => {
+      // Always refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [`/api/categories/${data.id}`] });
+      }
+    }
   });
 
   // Handle input change

@@ -383,28 +383,74 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
 
   return (
     <div className="space-y-4 p-4 border border-gray-200 rounded-md bg-gray-50">
+      {/* Subcategory ID and parent relationship for clear identification */}
+      <div className="flex justify-between items-center mb-2 text-xs text-gray-500">
+        {subcategory.id && (
+          <div>Subcategory ID: <span className="font-mono">{subcategory.id}</span></div>
+        )}
+        <div>
+          Parent Category: <span className="font-medium">{parentCategory?.name || 'Loading...'}</span>
+          <span className="font-mono ml-1">(ID: {subcategory.categoryId})</span>
+        </div>
+        <div>Last updated: {new Date().toLocaleTimeString()}</div>
+      </div>
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label>Name</Label>
+          <Label>
+            Name
+            <span className="text-red-500 ml-1">*</span>
+          </Label>
           <Input 
             value={subcategory.name} 
             onChange={(e) => handleInputChange('name', e.target.value)}
+            className="bg-white"
+            data-subcategory-id={subcategory.id}
+            data-parent-category-id={subcategory.categoryId}
+            placeholder="Subcategory name"
           />
         </div>
         
         <div>
-          <Label>Type</Label>
+          <Label>
+            Type
+            <span className="text-red-500 ml-1">*</span>
+            <span className="text-xs text-gray-500 ml-2">Tracking Method</span>
+          </Label>
           <Select
             value={subcategory.goalType}
             onValueChange={(value) => handleInputChange('goalType', value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-white">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="time">Time-based</SelectItem>
-              <SelectItem value="habit">Habit</SelectItem>
-              <SelectItem value="boolean">Boolean</SelectItem>
+              <div className="p-1 space-y-1">
+                <SelectItem value="time">
+                  <div className="flex items-center">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center mr-2">
+                      <span className="text-blue-600 text-xs">T</span>
+                    </span>
+                    <span>Time-based</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="habit">
+                  <div className="flex items-center">
+                    <span className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                      <span className="text-green-600 text-xs">H</span>
+                    </span>
+                    <span>Habit</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="boolean">
+                  <div className="flex items-center">
+                    <span className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center mr-2">
+                      <span className="text-purple-600 text-xs">B</span>
+                    </span>
+                    <span>Boolean</span>
+                  </div>
+                </SelectItem>
+              </div>
             </SelectContent>
           </Select>
         </div>
@@ -413,14 +459,18 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
       {subcategory.goalType === 'time' && (
         <div>
           <div className="flex justify-between items-center">
-            <Label>Goal (hours)</Label>
+            <Label>
+              Goal (hours)
+              <span className="text-red-500 ml-1">*</span>
+              <span className="text-xs text-gray-500 ml-2">Time Allocation</span>
+            </Label>
             {!isNew && parentCategory && (
-              <div className={`text-xs ${
+              <div className={`text-xs font-medium px-2 py-1 rounded-full ${
                 calculateMaxAllowedHours() < 1 
-                  ? 'text-red-500 font-semibold' 
+                  ? 'bg-red-100 text-red-700' 
                   : calculateMaxAllowedHours() < 2 
-                    ? 'text-amber-500' 
-                    : 'text-gray-500'
+                    ? 'bg-amber-100 text-amber-700' 
+                    : 'bg-green-100 text-green-700'
               }`}>
                 Available: {calculateMaxAllowedHours().toFixed(1)} hours
               </div>
@@ -430,30 +480,53 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
             value={subcategory.goalHours?.toString() || '1'}
             onValueChange={(value) => handleInputChange('goalHours', parseFloat(value))}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-white">
               <SelectValue placeholder="Select hours" />
             </SelectTrigger>
             <SelectContent>
-              {hourOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              <div className="grid grid-cols-2 gap-1 p-1">
+                {hourOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </div>
             </SelectContent>
           </Select>
+          
+          {/* Display UTC and time allocation information */}
+          <div className="mt-2 text-xs text-gray-500">
+            <div className="flex justify-between">
+              <span>UTC Adjustment: {(new Date().getTimezoneOffset() / 60 * -1).toFixed(1)}h offset</span>
+              <span>Daily Max: 16h (8h sleep)</span>
+            </div>
+          </div>
         </div>
       )}
       
-      <div className="flex justify-end space-x-2 pt-2">
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleSubmit}
-          disabled={isSubmitting || !isValid}
-        >
-          {isSubmitting ? "Saving..." : isNew ? "Create" : "Update"}
-        </Button>
+      <div className="flex justify-between pt-4 border-t border-gray-200 mt-4">
+        <div className="text-xs text-gray-500">
+          {isNew ? 'Creating new subcategory' : `Editing: ${subcategory.name}`}
+          {parentCategory && <span> in {parentCategory.name}</span>}
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={onClose} size="sm">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={isSubmitting || !isValid}
+            size="sm"
+          >
+            {isSubmitting ? 
+              <span className="flex items-center">
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                Saving...
+              </span> : 
+              isNew ? "Create" : "Update"
+            }
+          </Button>
+        </div>
       </div>
     </div>
   );

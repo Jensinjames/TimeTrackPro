@@ -90,7 +90,13 @@ function SubcategoryList({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Subcategories</h3>
+        <div>
+          <h3 className="text-lg font-medium">Subcategories</h3>
+          <div className="text-xs text-gray-500">
+            Category ID: <span className="font-mono">{categoryId}</span> • 
+            <span className="ml-1">{subcategories.length} items</span>
+          </div>
+        </div>
         <Button 
           variant="outline" 
           size="sm" 
@@ -112,30 +118,75 @@ function SubcategoryList({
       )}
       
       {isAddingSubcategory && (
-        <SubcategoryForm 
-          isNew={true} 
-          subcategory={{...newSubcategoryFormData, categoryId}}
-          onClose={() => setIsAddingSubcategory(false)}
-        />
+        <div className="border border-blue-200 rounded-md bg-blue-50 p-1 mb-2">
+          <div className="text-xs text-blue-700 font-medium mb-1 px-2 py-1 bg-blue-100 rounded-sm">
+            New Subcategory for Category ID: {categoryId}
+          </div>
+          <SubcategoryForm 
+            isNew={true} 
+            subcategory={{...newSubcategoryFormData, categoryId}}
+            onClose={() => setIsAddingSubcategory(false)}
+          />
+        </div>
       )}
+      
+      {/* Subcategory Type Legends */}
+      <div className="flex flex-wrap gap-2 text-xs mb-2">
+        <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
+          <TimerIcon className="w-3 h-3 text-blue-500" />
+          <span>Time</span>
+        </div>
+        <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
+          <CheckCircle2 className="w-3 h-3 text-green-500" />
+          <span>Habit</span>
+        </div>
+        <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
+          <AlertCircle className="w-3 h-3 text-purple-500" />
+          <span>Task</span>
+        </div>
+      </div>
       
       <div className="space-y-1">
         {subcategories.map(subcategory => (
           <div 
             key={subcategory.id}
-            className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+            className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors duration-150 border border-transparent hover:border-gray-200"
             onClick={() => onSubcategoryEdit(subcategory)}
+            data-subcategory-id={subcategory.id}
+            data-parent-category-id={categoryId}
           >
             <div className="flex items-center gap-2">
               {getSubcategoryTypeIcon(subcategory.goalType)}
-              <span>{subcategory.name}</span>
+              <span className="font-medium">{subcategory.name}</span>
+              <span className="text-xs text-gray-500 font-mono">(ID: {subcategory.id})</span>
             </div>
             
-            <Badge variant="outline" className="text-xs">
-              {getSubcategoryTypeLabel(subcategory.goalType, subcategory.goalMinutes)}
-            </Badge>
+            <div className="flex items-center gap-2">
+              {subcategory.goalType === 'time' && (
+                <span className="text-xs text-gray-500">
+                  {Math.round(subcategory.goalMinutes / 60 * 100) / 100} hours
+                </span>
+              )}
+              <Badge 
+                variant="outline" 
+                className={`text-xs ${
+                  subcategory.goalType === 'time' 
+                    ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                    : subcategory.goalType === 'habit'
+                      ? 'bg-green-50 text-green-700 border-green-200'
+                      : 'bg-purple-50 text-purple-700 border-purple-200'
+                }`}
+              >
+                {getSubcategoryTypeLabel(subcategory.goalType, subcategory.goalMinutes)}
+              </Badge>
+            </div>
           </div>
         ))}
+      </div>
+      
+      {/* Last updated timestamp */}
+      <div className="text-xs text-gray-500 text-right mt-4">
+        Last refreshed: {new Date().toLocaleTimeString()}
       </div>
     </div>
   );
