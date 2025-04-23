@@ -1,6 +1,15 @@
-import { users, categories, subcategories, dailyEntries, timeRecords, habitRecords, defaultCategories } from "@shared/schema";
-import { v4 as uuidv4 } from 'uuid';
-import type {
+// Database storage implementation with schema type safety
+import memoryStore from "memorystore";
+import session from "express-session";
+import { db } from "./db";
+import {
+  users,
+  categories,
+  subcategories,
+  dailyEntries,
+  timeRecords,
+  habitRecords,
+  defaultCategories,
   User,
   InsertUser,
   Category,
@@ -15,16 +24,10 @@ import type {
   InsertHabitRecord,
   CategoryWithSubcategories,
   DailyEntryWithDetails
-} from "@shared/schema";
-import session from "express-session";
-import createMemoryStore from "memorystore";
-import connectPg from "connect-pg-simple";
-import { db, pool } from "./db";
-import { eq, and, desc, between, gte, lte } from "drizzle-orm";
+} from "../shared/schema";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 
-const MemoryStore = createMemoryStore(session);
-const PostgresSessionStore = connectPg(session);
-
+// Storage interface to abstract persistence layer
 export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
@@ -74,6 +77,7 @@ export interface IStorage {
   sessionStore: any;
 }
 
+// In-memory storage implementation for development/testing
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private categories: Map<number, Category>;
@@ -82,6 +86,7 @@ export class MemStorage implements IStorage {
   private timeRecords: Map<number, TimeRecord>;
   private habitRecords: Map<number, HabitRecord>;
   
+  // ID counters
   currentUserId: number;
   currentCategoryId: number;
   currentSubcategoryId: number;
@@ -89,7 +94,7 @@ export class MemStorage implements IStorage {
   currentTimeRecordId: number;
   currentHabitRecordId: number;
   sessionStore: any;
-
+  
   constructor() {
     this.users = new Map();
     this.categories = new Map();
@@ -98,6 +103,7 @@ export class MemStorage implements IStorage {
     this.timeRecords = new Map();
     this.habitRecords = new Map();
     
+    // Initialize counters
     this.currentUserId = 1;
     this.currentCategoryId = 1;
     this.currentSubcategoryId = 1;
@@ -105,217 +111,328 @@ export class MemStorage implements IStorage {
     this.currentTimeRecordId = 1;
     this.currentHabitRecordId = 1;
     
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    // Setup session store
+    const SessionStore = memoryStore(session);
+    this.sessionStore = new SessionStore({
+      checkPeriod: 86400000 // Prune expired entries every 24h
     });
   }
-
+  
   // User methods
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
-
+  
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username.toLowerCase() === username.toLowerCase(),
-    );
+    for (const user of this.users.values()) {
+      if (user.username === username) {
+        return user;
+      }
+    }
+    return undefined;
   }
-
+  
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.email.toLowerCase() === email.toLowerCase(),
-    );
+    for (const user of this.users.values()) {
+      if (user.email === email) {
+        return user;
+      }
+    }
+    return undefined;
   }
-
+  
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
+    
+    // Create default categories for the new user
+    await this.setupDefaultCategories(id);
+    
     return user;
   }
   
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
     const existingUser = this.users.get(id);
-    if (!existingUser) return undefined;
+    if (!existingUser) {
+      return undefined;
+    }
     
     const updatedUser: User = { ...existingUser, ...userData };
     this.users.set(id, updatedUser);
     return updatedUser;
   }
-
+  
   // Category methods
   async getCategories(userId: number): Promise<CategoryWithSubcategories[]> {
-    const userCategories = Array.from(this.categories.values())
-      .filter(cat => cat.userId === userId)
-      .sort((a, b) => a.order - b.order);
+    const userCategories: Category[] = [];
+    
+    for (const category of this.categories.values()) {
+      if (category.userId === userId) {
+        userCategories.push(category);
+      }
+    }
+    
+    // Sort by order field
+    userCategories.sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    // Add subcategories to each category
+    const result: CategoryWithSubcategories[] = [];
+    
+    for (const category of userCategories) {
+      const categorySubcategories: Subcategory[] = [];
       
-    return Promise.all(
-      userCategories.map(async (category) => {
-        const subs = await this.getSubcategories(category.id);
-        return { ...category, subcategories: subs };
-      })
-    );
+      for (const subcategory of this.subcategories.values()) {
+        if (subcategory.categoryId === category.id) {
+          categorySubcategories.push(subcategory);
+        }
+      }
+      
+      // Sort subcategories by priority
+      categorySubcategories.sort((a, b) => {
+        const priorityA = a.priority !== null ? a.priority : 999;
+        const priorityB = b.priority !== null ? b.priority : 999;
+        return priorityA - priorityB;
+      });
+      
+      result.push({
+        ...category,
+        subcategories: categorySubcategories
+      });
+    }
+    
+    return result;
   }
-
+  
   async getCategory(id: number): Promise<Category | undefined> {
     return this.categories.get(id);
   }
-
+  
   async createCategory(category: InsertCategory): Promise<Category> {
     const id = this.currentCategoryId++;
     const newCategory: Category = { ...category, id };
     this.categories.set(id, newCategory);
     return newCategory;
   }
-
+  
   async updateCategory(id: number, category: Partial<InsertCategory>): Promise<Category | undefined> {
     const existingCategory = this.categories.get(id);
-    if (!existingCategory) return undefined;
+    if (!existingCategory) {
+      return undefined;
+    }
     
     const updatedCategory: Category = { ...existingCategory, ...category };
     this.categories.set(id, updatedCategory);
     return updatedCategory;
   }
-
+  
   async deleteCategory(id: number): Promise<void> {
-    // Delete subcategories first
-    const subcats = await this.getSubcategories(id);
-    for (const subcat of subcats) {
-      await this.deleteSubcategory(subcat.id);
-    }
-    
+    // Delete the category
     this.categories.delete(id);
+    
+    // Delete all subcategories
+    for (const [subId, subcategory] of this.subcategories.entries()) {
+      if (subcategory.categoryId === id) {
+        this.subcategories.delete(subId);
+      }
+    }
   }
-
+  
   // Subcategory methods
   async getSubcategory(id: number): Promise<Subcategory | undefined> {
     return this.subcategories.get(id);
   }
-
+  
   async getSubcategories(categoryId: number): Promise<Subcategory[]> {
-    return Array.from(this.subcategories.values())
-      .filter(sub => sub.categoryId === categoryId);
+    const result: Subcategory[] = [];
+    
+    for (const subcategory of this.subcategories.values()) {
+      if (subcategory.categoryId === categoryId) {
+        result.push(subcategory);
+      }
+    }
+    
+    return result;
   }
-
+  
   async createSubcategory(subcategory: InsertSubcategory): Promise<Subcategory> {
     const id = this.currentSubcategoryId++;
     const newSubcategory: Subcategory = { ...subcategory, id };
     this.subcategories.set(id, newSubcategory);
     return newSubcategory;
   }
-
+  
   async updateSubcategory(id: number, subcategory: Partial<InsertSubcategory>): Promise<Subcategory | undefined> {
     const existingSubcategory = this.subcategories.get(id);
-    if (!existingSubcategory) return undefined;
+    if (!existingSubcategory) {
+      return undefined;
+    }
     
     const updatedSubcategory: Subcategory = { ...existingSubcategory, ...subcategory };
     this.subcategories.set(id, updatedSubcategory);
     return updatedSubcategory;
   }
-
+  
   async deleteSubcategory(id: number): Promise<void> {
     this.subcategories.delete(id);
   }
-
+  
   // Daily entry methods
   async getDailyEntry(id: number): Promise<DailyEntry | undefined> {
     return this.dailyEntries.get(id);
   }
-
+  
   async getDailyEntryByDate(userId: number, date: Date): Promise<DailyEntryWithDetails | undefined> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
+    // Get all entries
+    const entries: DailyEntry[] = [];
+    for (const entry of this.dailyEntries.values()) {
+      if (entry.userId === userId) {
+        entries.push(entry);
+      }
+    }
     
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Find entry for the specified date (comparing dates without time)
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
     
-    const entry = Array.from(this.dailyEntries.values()).find(
-      (entry) => 
-        entry.userId === userId && 
-        entry.date >= startOfDay && 
-        entry.date <= endOfDay
-    );
+    let matchingEntry: DailyEntry | undefined;
+    for (const entry of entries) {
+      const entryDate = new Date(entry.date);
+      entryDate.setHours(0, 0, 0, 0);
+      
+      if (entryDate.getTime() === targetDate.getTime()) {
+        matchingEntry = entry;
+        break;
+      }
+    }
     
-    if (!entry) return undefined;
+    if (!matchingEntry) {
+      return undefined;
+    }
     
     // Get time records for this entry
-    const entryTimeRecords = Array.from(this.timeRecords.values())
-      .filter(record => record.entryId === entry.id)
-      .map(record => {
-        const subcategory = this.subcategories.get(record.subcategoryId);
-        if (!subcategory) {
-          throw new Error(`Subcategory not found: ${record.subcategoryId}`);
-        }
-        
-        const category = this.categories.get(subcategory.categoryId);
-        if (!category) {
-          throw new Error(`Category not found: ${subcategory.categoryId}`);
-        }
-        
-        return {
-          ...record,
-          subcategory: { ...subcategory, category }
-        };
-      });
+    const entryTimeRecords: TimeRecord[] = [];
+    for (const record of this.timeRecords.values()) {
+      if (record.entryId === matchingEntry.id) {
+        entryTimeRecords.push(record);
+      }
+    }
     
     // Get habit records for this entry
-    const entryHabitRecords = Array.from(this.habitRecords.values())
-      .filter(record => record.entryId === entry.id)
-      .map(record => {
-        const subcategory = this.subcategories.get(record.subcategoryId);
-        if (!subcategory) {
-          throw new Error(`Subcategory not found: ${record.subcategoryId}`);
-        }
-        
-        const category = this.categories.get(subcategory.categoryId);
-        if (!category) {
-          throw new Error(`Category not found: ${subcategory.categoryId}`);
-        }
-        
+    const entryHabitRecords: HabitRecord[] = [];
+    for (const record of this.habitRecords.values()) {
+      if (record.entryId === matchingEntry.id) {
+        entryHabitRecords.push(record);
+      }
+    }
+    
+    // Enhance time records with subcategory and category information
+    const enhancedTimeRecords = entryTimeRecords.map(record => {
+      const subcategory = this.subcategories.get(record.subcategoryId);
+      if (!subcategory) {
         return {
           ...record,
-          subcategory: { ...subcategory, category }
+          subcategory: { id: 0, name: 'Unknown', categoryId: 0, goalMinutes: 0, goalType: 'time', displayId: null, priority: null, category: { id: 0, name: 'Unknown', userId: 0, goalHours: 0, color: '#cccccc', icon: '', monthlyGoalHours: 0, goalPeriod: 'daily', order: 0, uuid: null, prefix: null } }
         };
-      });
+      }
+      
+      const category = this.categories.get(subcategory.categoryId);
+      if (!category) {
+        return {
+          ...record,
+          subcategory: { ...subcategory, category: { id: 0, name: 'Unknown', userId: 0, goalHours: 0, color: '#cccccc', icon: '', monthlyGoalHours: 0, goalPeriod: 'daily', order: 0, uuid: null, prefix: null } }
+        };
+      }
+      
+      return {
+        ...record,
+        subcategory: { ...subcategory, category }
+      };
+    });
     
-    return { 
-      ...entry, 
-      timeRecords: entryTimeRecords,
-      habitRecords: entryHabitRecords
+    // Enhance habit records with subcategory and category information
+    const enhancedHabitRecords = entryHabitRecords.map(record => {
+      const subcategory = this.subcategories.get(record.subcategoryId);
+      if (!subcategory) {
+        return {
+          ...record,
+          subcategory: { id: 0, name: 'Unknown', categoryId: 0, goalMinutes: 0, goalType: 'binary', displayId: null, priority: null, category: { id: 0, name: 'Unknown', userId: 0, goalHours: 0, color: '#cccccc', icon: '', monthlyGoalHours: 0, goalPeriod: 'daily', order: 0, uuid: null, prefix: null } }
+        };
+      }
+      
+      const category = this.categories.get(subcategory.categoryId);
+      if (!category) {
+        return {
+          ...record,
+          subcategory: { ...subcategory, category: { id: 0, name: 'Unknown', userId: 0, goalHours: 0, color: '#cccccc', icon: '', monthlyGoalHours: 0, goalPeriod: 'daily', order: 0, uuid: null, prefix: null } }
+        };
+      }
+      
+      return {
+        ...record,
+        subcategory: { ...subcategory, category }
+      };
+    });
+    
+    return {
+      ...matchingEntry,
+      timeRecords: enhancedTimeRecords,
+      habitRecords: enhancedHabitRecords
     };
   }
-
+  
   async createDailyEntry(entry: InsertDailyEntry): Promise<DailyEntry> {
     const id = this.currentEntryId++;
     const newEntry: DailyEntry = { ...entry, id };
     this.dailyEntries.set(id, newEntry);
     return newEntry;
   }
-
+  
   async updateDailyEntry(id: number, entry: Partial<InsertDailyEntry>): Promise<DailyEntry | undefined> {
     const existingEntry = this.dailyEntries.get(id);
-    if (!existingEntry) return undefined;
+    if (!existingEntry) {
+      return undefined;
+    }
     
     const updatedEntry: DailyEntry = { ...existingEntry, ...entry };
     this.dailyEntries.set(id, updatedEntry);
     return updatedEntry;
   }
-
+  
   // Time record methods
   async createTimeRecord(record: InsertTimeRecord): Promise<TimeRecord> {
+    // Check if a record already exists for this entry and subcategory
+    for (const [id, existingRecord] of this.timeRecords.entries()) {
+      if (existingRecord.entryId === record.entryId && existingRecord.subcategoryId === record.subcategoryId) {
+        // Update existing record instead of creating a new one
+        const updatedRecord = { ...existingRecord, minutes: record.minutes };
+        this.timeRecords.set(id, updatedRecord);
+        return updatedRecord;
+      }
+    }
+    
+    // Create new record if none exists
     const id = this.currentTimeRecordId++;
     const newRecord: TimeRecord = { ...record, id };
     this.timeRecords.set(id, newRecord);
     return newRecord;
   }
-
+  
   async updateTimeRecord(entryId: number, subcategoryId: number, minutes: number): Promise<TimeRecord | undefined> {
-    const record = Array.from(this.timeRecords.values()).find(
-      r => r.entryId === entryId && r.subcategoryId === subcategoryId
-    );
+    // Find the record
+    let record: TimeRecord | undefined;
+    let recordId: number | undefined;
     
-    if (!record) {
-      // Create new record if it doesn't exist
+    for (const [id, timeRecord] of this.timeRecords.entries()) {
+      if (timeRecord.entryId === entryId && timeRecord.subcategoryId === subcategoryId) {
+        record = timeRecord;
+        recordId = id;
+        break;
+      }
+    }
+    
+    // If record doesn't exist, create it
+    if (!record || recordId === undefined) {
       const newRecord: InsertTimeRecord = {
         entryId,
         subcategoryId,
@@ -326,25 +443,44 @@ export class MemStorage implements IStorage {
     
     // Update existing record
     const updatedRecord: TimeRecord = { ...record, minutes };
-    this.timeRecords.set(record.id, updatedRecord);
+    this.timeRecords.set(recordId, updatedRecord);
     return updatedRecord;
   }
-
+  
   // Habit record methods
   async createHabitRecord(record: InsertHabitRecord): Promise<HabitRecord> {
+    // Check if a record already exists for this entry and subcategory
+    for (const [id, existingRecord] of this.habitRecords.entries()) {
+      if (existingRecord.entryId === record.entryId && existingRecord.subcategoryId === record.subcategoryId) {
+        // Update existing record instead of creating a new one
+        const updatedRecord = { ...existingRecord, completed: record.completed };
+        this.habitRecords.set(id, updatedRecord);
+        return updatedRecord;
+      }
+    }
+    
+    // Create new record if none exists
     const id = this.currentHabitRecordId++;
     const newRecord: HabitRecord = { ...record, id };
     this.habitRecords.set(id, newRecord);
     return newRecord;
   }
-
+  
   async updateHabitRecord(entryId: number, subcategoryId: number, completed: boolean): Promise<HabitRecord | undefined> {
-    const record = Array.from(this.habitRecords.values()).find(
-      r => r.entryId === entryId && r.subcategoryId === subcategoryId
-    );
+    // Find the record
+    let record: HabitRecord | undefined;
+    let recordId: number | undefined;
     
-    if (!record) {
-      // Create new record if it doesn't exist
+    for (const [id, habitRecord] of this.habitRecords.entries()) {
+      if (habitRecord.entryId === entryId && habitRecord.subcategoryId === subcategoryId) {
+        record = habitRecord;
+        recordId = id;
+        break;
+      }
+    }
+    
+    // If record doesn't exist, create it
+    if (!record || recordId === undefined) {
       const newRecord: InsertHabitRecord = {
         entryId,
         subcategoryId,
@@ -355,61 +491,82 @@ export class MemStorage implements IStorage {
     
     // Update existing record
     const updatedRecord: HabitRecord = { ...record, completed };
-    this.habitRecords.set(record.id, updatedRecord);
+    this.habitRecords.set(recordId, updatedRecord);
     return updatedRecord;
   }
-
-  // Setup default categories for new user
+  
+  // Setup default categories for the user
   async setupDefaultCategories(userId: number): Promise<void> {
     for (let i = 0; i < defaultCategories.length; i++) {
       const cat = defaultCategories[i];
-      // Create category with UUID and prefix
+      
+      // Create the category
       const category = await this.createCategory({
         userId,
         name: cat.name,
         color: cat.color,
         icon: cat.icon,
         goalHours: cat.goalHours,
-        uuid: uuidv4(), // Generate UUID for category
-        prefix: cat.prefix, // Use prefix from default category
-        monthlyGoalHours: cat.monthlyGoalHours || 0,
-        goalPeriod: cat.goalPeriod || "daily",
-        order: i
+        order: i,
+        monthlyGoalHours: cat.goalHours * 30,
+        goalPeriod: 'daily',
+        prefix: cat.name.charAt(0).toUpperCase(),
+        uuid: `category-${cat.name}-${Date.now()}`
       });
       
-      // Create subcategories with display IDs
-      let priority = 1;
-      for (const sub of cat.subcategories) {
+      // Create subcategories
+      for (let j = 0; j < cat.subcategories.length; j++) {
+        const sub = cat.subcategories[j];
         await this.createSubcategory({
           categoryId: category.id,
           name: sub.name,
           goalMinutes: sub.goalMinutes,
-          goalType: sub.goalType || "time",
-          displayId: sub.displayId || `${cat.prefix}${priority}`, // Use provided display ID or generate one
-          priority: sub.priority || priority++
+          goalType: sub.goalType,
+          displayId: `${category.prefix}${j+1}`,
+          priority: j
         });
       }
     }
   }
   
-  // Get daily entries in date range
-  async getDailyEntriesInRange(userId: number, startDate: Date, endDate: Date): Promise<any[]> {
-    const entries = Array.from(this.dailyEntries.values())
-      .filter(entry => 
-        entry.userId === userId && 
-        entry.date >= startDate && 
-        entry.date <= endDate
-      )
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-      
-    return entries;
-  }
-
-  // Dashboard data method
+  // Dashboard data methods
   async getDashboardData(userId: number, date: Date): Promise<any> {
     const entry = await this.getDailyEntryByDate(userId, date);
     const categories = await this.getCategories(userId);
     
+    // Constants for time limits
+    const MAX_DAILY_HOURS = 24; // 24 hours per day
+    const MAX_MONTHLY_HOURS = 730.001; // 730.001 hours per month (30 days)
+    
+    // Track total monthly and daily allocations
+    let totalMonthlyGoalHours = 0;
+    let totalDailyGoalHours = 0;
+    
+    // Separate monthly and daily categories
+    const monthlyCategories: number[] = [];
+    const dailyCategories: number[] = [];
+    
+    // First pass: calculate totals and categorize by goal period
+    categories.forEach(category => {
+      if (category.goalPeriod === 'monthly' && category.monthlyGoalHours) {
+        totalMonthlyGoalHours += category.monthlyGoalHours;
+        monthlyCategories.push(category.id);
+      } else {
+        totalDailyGoalHours += category.goalHours;
+        dailyCategories.push(category.id);
+      }
+    });
+    
+    // Determine if adjustments are needed
+    const monthlyAdjustmentRatio = totalMonthlyGoalHours > MAX_MONTHLY_HOURS 
+      ? MAX_MONTHLY_HOURS / totalMonthlyGoalHours 
+      : 1;
+    
+    const dailyAdjustmentRatio = totalDailyGoalHours > MAX_DAILY_HOURS 
+      ? MAX_DAILY_HOURS / totalDailyGoalHours 
+      : 1;
+    
+    // Process categories with adjustments if needed
     const categoryData = categories.map(category => {
       let actualMinutes = 0;
       
@@ -426,21 +583,39 @@ export class MemStorage implements IStorage {
       
       const actualHours = actualMinutes / 60;
       
-      // Calculate the target hours based on goal period
+      // Calculate the target hours based on goal period with applicable adjustments
       let targetGoalHours = category.goalHours;
+      let adjustedGoalHours = targetGoalHours;
       
-      // If using monthly goal, convert to daily equivalent for progress calculation
+      // Apply monthly or daily adjustments as needed
       if (category.goalPeriod === 'monthly' && category.monthlyGoalHours) {
-        targetGoalHours = category.monthlyGoalHours / 30;
+        targetGoalHours = category.monthlyGoalHours / 30; // Convert to daily equivalent
+        
+        // Apply monthly adjustment if needed
+        if (monthlyAdjustmentRatio < 1) {
+          const adjustedMonthlyHours = category.monthlyGoalHours * monthlyAdjustmentRatio;
+          adjustedGoalHours = adjustedMonthlyHours / 30;
+        } else {
+          adjustedGoalHours = targetGoalHours;
+        }
+      } else if (dailyAdjustmentRatio < 1) {
+        // Apply daily adjustment if needed
+        adjustedGoalHours = category.goalHours * dailyAdjustmentRatio;
       }
       
-      // Calculate progress based on the correct goal
-      const progress = targetGoalHours > 0 ? (actualHours / targetGoalHours) * 100 : 0;
+      // Calculate progress based on the correct goal (but display against adjusted goal)
+      const progress = adjustedGoalHours > 0 ? (actualHours / adjustedGoalHours) * 100 : 0;
       
       return {
         ...category,
         actualHours,
-        progress: Math.min(progress, 100)
+        progress: Math.min(progress, 100),
+        // Include adjustment information
+        originalGoalHours: category.goalPeriod === 'monthly' ? category.monthlyGoalHours / 30 : category.goalHours,
+        adjustedGoalHours,
+        isAdjusted: category.goalPeriod === 'monthly' 
+          ? monthlyAdjustmentRatio < 1 
+          : dailyAdjustmentRatio < 1
       };
     });
     
@@ -450,450 +625,569 @@ export class MemStorage implements IStorage {
     const sleepDuration = entry?.sleepHours || 0;
     const healthBalance = entry?.healthBalance || 0;
     
+    // Include adjustment metadata
+    const timeConstraints = {
+      daily: {
+        totalHours: totalDailyGoalHours,
+        maxHours: MAX_DAILY_HOURS,
+        isAdjusted: dailyAdjustmentRatio < 1,
+        adjustmentRatio: dailyAdjustmentRatio
+      },
+      monthly: {
+        totalHours: totalMonthlyGoalHours,
+        maxHours: MAX_MONTHLY_HOURS,
+        isAdjusted: monthlyAdjustmentRatio < 1,
+        adjustmentRatio: monthlyAdjustmentRatio
+      }
+    };
+    
     return {
       dailyScore,
       motivationLevel,
       sleepDuration,
       healthBalance,
-      categories: categoryData
+      categories: categoryData,
+      timeConstraints
     };
+  }
+  
+  // History data methods
+  async getDailyEntriesInRange(userId: number, startDate: Date, endDate: Date): Promise<any[]> {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    
+    const entries: DailyEntry[] = [];
+    for (const entry of this.dailyEntries.values()) {
+      if (entry.userId === userId) {
+        const entryDate = new Date(entry.date);
+        if (entryDate >= start && entryDate <= end) {
+          entries.push(entry);
+        }
+      }
+    }
+    
+    // Get detailed entries
+    const detailedEntries = await Promise.all(
+      entries.map(async (entry) => {
+        return this.getDailyEntryByDate(userId, entry.date);
+      })
+    );
+    
+    // Filter out undefined entries and sort by date
+    return detailedEntries
+      .filter((entry): entry is DailyEntryWithDetails => entry !== undefined)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 }
 
+// Database implementation of storage interface
 export class DatabaseStorage implements IStorage {
   sessionStore: any;
-
+  
   constructor() {
-    this.sessionStore = new PostgresSessionStore({
-      pool,
-      createTableIfMissing: true
+    // Setup session store
+    const SessionStore = memoryStore(session);
+    this.sessionStore = new SessionStore({
+      checkPeriod: 86400000 // Prune expired entries every 24h
     });
   }
   
+  // History data methods
   async getDailyEntriesInRange(userId: number, startDate: Date, endDate: Date): Promise<any[]> {
-    try {
-      const entries = await db
-        .select()
-        .from(dailyEntries)
-        .where(
-          and(
-            eq(dailyEntries.userId, userId),
-            gte(dailyEntries.date, startDate),
-            lte(dailyEntries.date, endDate)
-          )
-        )
-        .orderBy(dailyEntries.date);
-      
-      return entries;
-    } catch (error) {
-      console.error("Error fetching daily entries in range:", error);
-      return [];
-    }
+    // Get all daily entries within date range
+    const entries = await db.select().from(dailyEntries)
+      .where(and(
+        eq(dailyEntries.userId, userId),
+        gte(dailyEntries.date, startDate),
+        lte(dailyEntries.date, endDate)
+      ));
+    
+    // Get detailed info for each entry
+    const detailedEntries = await Promise.all(
+      entries.map(async (entry) => {
+        return this.getDailyEntryByDate(userId, entry.date);
+      })
+    );
+    
+    // Filter out undefined entries and sort by date
+    return detailedEntries
+      .filter((entry): entry is DailyEntryWithDetails => entry !== undefined)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
-
+  
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    const users = await db.select().from(this.users).where(eq(this.users.id, id));
+    return users[0];
   }
-
+  
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    const users = await db.select().from(this.users).where(eq(this.users.username, username));
+    return users[0];
   }
-
+  
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    const users = await db.select().from(this.users).where(eq(this.users.email, email));
+    return users[0];
   }
-
+  
   async createUser(user: InsertUser): Promise<User> {
-    const [createdUser] = await db.insert(users).values(user).returning();
-    return createdUser;
+    const results = await db.insert(this.users).values(user).returning();
+    const newUser = results[0];
+    
+    // Create default categories
+    await this.setupDefaultCategories(newUser.id);
+    
+    return newUser;
   }
   
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
-    try {
-      const [updatedUser] = await db
-        .update(users)
-        .set(userData)
-        .where(eq(users.id, id))
-        .returning();
-        
-      return updatedUser;
-    } catch (error) {
-      console.error("Error updating user:", error);
-      return undefined;
-    }
+    const results = await db.update(this.users)
+      .set(userData)
+      .where(eq(this.users.id, id))
+      .returning();
+    
+    return results[0];
   }
-
+  
   // Category methods
   async getCategories(userId: number): Promise<CategoryWithSubcategories[]> {
-    const userCategories = await db.select().from(categories)
-      .where(eq(categories.userId, userId))
-      .orderBy(categories.order);
-
+    // Get all categories for user
+    const userCategories = await db.select().from(this.categories)
+      .where(eq(this.categories.userId, userId))
+      .orderBy(this.categories.order);
+    
+    // For each category, get subcategories
     const result: CategoryWithSubcategories[] = [];
     
     for (const category of userCategories) {
-      const subList = await this.getSubcategories(category.id);
+      const subcats = await this.getSubcategories(category.id);
+      
+      // Sort subcategories by priority
+      subcats.sort((a, b) => {
+        const priorityA = a.priority !== null ? a.priority : 999;
+        const priorityB = b.priority !== null ? b.priority : 999;
+        return priorityA - priorityB;
+      });
+      
       result.push({
         ...category,
-        subcategories: subList
+        subcategories: subcats
       });
     }
     
     return result;
   }
-
+  
   async getCategory(id: number): Promise<Category | undefined> {
-    const [category] = await db.select().from(categories).where(eq(categories.id, id));
-    return category;
+    const categories = await db.select().from(this.categories).where(eq(this.categories.id, id));
+    return categories[0];
   }
-
+  
   async createCategory(category: InsertCategory): Promise<Category> {
-    const [createdCategory] = await db.insert(categories).values(category).returning();
-    return createdCategory;
+    const results = await db.insert(this.categories).values(category).returning();
+    return results[0];
   }
-
+  
   async updateCategory(id: number, category: Partial<InsertCategory>): Promise<Category | undefined> {
-    const [updatedCategory] = await db.update(categories)
+    const results = await db.update(this.categories)
       .set(category)
-      .where(eq(categories.id, id))
+      .where(eq(this.categories.id, id))
       .returning();
-    return updatedCategory;
-  }
-
-  async deleteCategory(id: number): Promise<void> {
-    // Get subcategories to delete
-    const subcats = await this.getSubcategories(id);
     
-    // Delete each subcategory (which will also delete related time/habit records)
-    for (const subcat of subcats) {
-      await this.deleteSubcategory(subcat.id);
+    return results[0];
+  }
+  
+  async deleteCategory(id: number): Promise<void> {
+    // Get all subcategories
+    const subcategories = await db.select().from(this.subcategories)
+      .where(eq(this.subcategories.categoryId, id));
+    
+    // Delete all subcategory records first
+    for (const subcategory of subcategories) {
+      // Delete time records and habit records
+      await db.delete(this.timeRecords)
+        .where(eq(this.timeRecords.subcategoryId, subcategory.id));
+      
+      await db.delete(this.habitRecords)
+        .where(eq(this.habitRecords.subcategoryId, subcategory.id));
     }
     
-    // Delete the category itself
-    await db.delete(categories).where(eq(categories.id, id));
+    // Delete all subcategories
+    await db.delete(this.subcategories)
+      .where(eq(this.subcategories.categoryId, id));
+    
+    // Finally delete the category
+    await db.delete(this.categories)
+      .where(eq(this.categories.id, id));
   }
-
+  
   // Subcategory methods
   async getSubcategory(id: number): Promise<Subcategory | undefined> {
-    const [subcategory] = await db.select().from(subcategories).where(eq(subcategories.id, id));
-    return subcategory;
+    const subcategories = await db.select().from(this.subcategories)
+      .where(eq(this.subcategories.id, id));
+    
+    return subcategories[0];
   }
-
+  
   async getSubcategories(categoryId: number): Promise<Subcategory[]> {
-    return db.select().from(subcategories).where(eq(subcategories.categoryId, categoryId));
+    return db.select().from(this.subcategories)
+      .where(eq(this.subcategories.categoryId, categoryId));
   }
-
+  
   async createSubcategory(subcategory: InsertSubcategory): Promise<Subcategory> {
     try {
-      // Check if the subcategory goal minutes exceed category goal
-      if (subcategory.goalMinutes > 0) {
-        // Get the parent category
-        const category = await this.getCategory(subcategory.categoryId);
-        if (!category) {
-          throw new Error("Parent category not found");
-        }
-        
-        // Get all existing subcategories for this category
-        const existingSubcategories = await this.getSubcategories(category.categoryId);
-        
-        // Calculate total minutes allocated to existing subcategories
-        const totalExistingMinutes = existingSubcategories.reduce(
-          (sum, sub) => sum + sub.goalMinutes, 0
-        );
-        
-        // Calculate the category's total goal minutes
-        const categoryTotalMinutes = category.goalPeriod === 'monthly' 
-          ? (category.monthlyGoalHours * 60)
-          : (category.goalHours * 60);
-        
-        // Calculate available minutes
-        const availableMinutes = Math.max(0, categoryTotalMinutes - totalExistingMinutes);
-        
-        // Add a small tolerance (0.5% of category total) to account for rounding errors
-        const toleranceMinutes = Math.max(1, Math.min(15, Math.ceil(categoryTotalMinutes * 0.005)));
-        
-        // Log the validation values
-        console.log(`CREATE VALIDATION: Category ${category.id} - Requested: ${subcategory.goalMinutes}, Available: ${availableMinutes}, Tolerance: ${toleranceMinutes}`);
-        
-        // Only throw error if it exceeds by more than the tolerance
-        if (subcategory.goalMinutes > (availableMinutes + toleranceMinutes)) {
-          throw new Error(`Subcategory goal cannot exceed ${Math.floor(availableMinutes / 60)} hours ${availableMinutes % 60} minutes (tolerance: ${toleranceMinutes} minutes)`);
-        }
-        
-        // If it's within tolerance but still over, adjust it to exactly match the max
-        if (subcategory.goalMinutes > availableMinutes) {
-          console.log(`ADJUSTING NEW: Requested ${subcategory.goalMinutes} minutes adjusted to ${availableMinutes} minutes (within tolerance)`);
-          subcategory.goalMinutes = availableMinutes;
-        }
+      const results = await db.insert(this.subcategories).values(subcategory).returning();
+      return results[0];
+    } catch (error: any) {
+      // Check if this might be a constraint error from the trigger
+      if (error.message.includes('sub-category goals')) {
+        throw new Error(`Subcategory goal cannot exceed category goal. ${error.message}`);
       }
-      
-      // If checks pass, create the subcategory
-      const [createdSubcategory] = await db.insert(subcategories).values(subcategory).returning();
-      return createdSubcategory;
-    } catch (error) {
-      console.error("Error in createSubcategory:", error);
       throw error;
     }
   }
-
+  
   async updateSubcategory(id: number, subcategory: Partial<InsertSubcategory>): Promise<Subcategory | undefined> {
     try {
-      // If we're updating goalMinutes, verify it doesn't exceed the parent category goal
-      if (subcategory.goalMinutes !== undefined) {
-        // First get the existing subcategory to find its category
-        const existingSubcategory = await this.getSubcategory(id);
-        if (!existingSubcategory) {
-          throw new Error("Subcategory not found");
-        }
-        
-        // Get the parent category
-        const category = await this.getCategory(existingSubcategory.categoryId);
-        if (!category) {
-          throw new Error("Parent category not found");
-        }
-        
-        // Get all subcategories for this category
-        const allSubcategories = await this.getSubcategories(category.categoryId);
-        
-        // Calculate total minutes for all subcategories except this one
-        const totalOtherSubcategoryMinutes = allSubcategories
-          .filter(sub => sub.id !== id)
-          .reduce((sum, sub) => sum + sub.goalMinutes, 0);
-        
-        // Calculate the maximum allowed for this subcategory
-        // Use the daily or monthly goals based on the category's goalPeriod
-        const categoryTotalMinutes = category.goalPeriod === 'monthly' 
-          ? (category.monthlyGoalHours * 60)
-          : (category.goalHours * 60);
-          
-        const maxAllowedMinutes = Math.max(0, categoryTotalMinutes - totalOtherSubcategoryMinutes);
-        
-        // Add a small tolerance (0.5% of total category goal) to account for rounding errors
-        const toleranceMinutes = Math.max(1, Math.min(15, Math.ceil(categoryTotalMinutes * 0.005)));
-        
-        // Only throw error if it exceeds by more than the tolerance
-        if (subcategory.goalMinutes > (maxAllowedMinutes + toleranceMinutes)) {
-          console.log(`VALIDATION ERROR: Requested ${subcategory.goalMinutes} minutes, Max allowed: ${maxAllowedMinutes} minutes, Tolerance: ${toleranceMinutes} minutes`);
-          throw new Error(`Subcategory goal cannot exceed ${Math.floor(maxAllowedMinutes / 60)} hours ${maxAllowedMinutes % 60} minutes (tolerance: ${toleranceMinutes} minutes)`);
-        }
-        
-        // If it's within tolerance but still over, adjust it to exactly match the max
-        if (subcategory.goalMinutes > maxAllowedMinutes) {
-          console.log(`ADJUSTING: Requested ${subcategory.goalMinutes} minutes adjusted to ${maxAllowedMinutes} minutes (within tolerance)`);
-          subcategory.goalMinutes = maxAllowedMinutes;
-        }
-      }
-      
-      // If no issues, proceed with the update
-      const [updatedSubcategory] = await db.update(subcategories)
+      const results = await db.update(this.subcategories)
         .set(subcategory)
-        .where(eq(subcategories.id, id))
+        .where(eq(this.subcategories.id, id))
         .returning();
-      return updatedSubcategory;
-    } catch (error) {
-      console.error("Error in updateSubcategory:", error);
+      
+      return results[0];
+    } catch (error: any) {
+      // Check if this might be a constraint error from the trigger
+      if (error.message.includes('sub-category goals')) {
+        throw new Error(`Subcategory goal cannot exceed category goal. ${error.message}`);
+      }
       throw error;
     }
   }
-
+  
   async deleteSubcategory(id: number): Promise<void> {
-    // First delete time records and habit records associated with this subcategory
-    await db.delete(timeRecords).where(eq(timeRecords.subcategoryId, id));
-    await db.delete(habitRecords).where(eq(habitRecords.subcategoryId, id));
+    // Delete time records and habit records first
+    await db.delete(this.timeRecords)
+      .where(eq(this.timeRecords.subcategoryId, id));
+    
+    await db.delete(this.habitRecords)
+      .where(eq(this.habitRecords.subcategoryId, id));
     
     // Then delete the subcategory
-    await db.delete(subcategories).where(eq(subcategories.id, id));
+    await db.delete(this.subcategories)
+      .where(eq(this.subcategories.id, id));
   }
-
+  
   // Daily entry methods
   async getDailyEntry(id: number): Promise<DailyEntry | undefined> {
-    const [entry] = await db.select().from(dailyEntries).where(eq(dailyEntries.id, id));
-    return entry;
+    const entries = await db.select().from(this.dailyEntries)
+      .where(eq(this.dailyEntries.id, id));
+    
+    return entries[0];
   }
-
+  
   async getDailyEntryByDate(userId: number, date: Date): Promise<DailyEntryWithDetails | undefined> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
+    // Get all entries for this user
+    const entries = await db.select().from(this.dailyEntries)
+      .where(eq(this.dailyEntries.userId, userId));
     
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Format the target date to compare only year, month, day
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const targetDateString = targetDate.toISOString().split('T')[0];
     
-    // Find the daily entry for this date
-    const [entry] = await db.select().from(dailyEntries)
-      .where(
-        and(
-          eq(dailyEntries.userId, userId),
-          gte(dailyEntries.date, startOfDay),
-          lte(dailyEntries.date, endOfDay)
-        )
-      );
+    // Find the matching entry
+    let matchingEntry: DailyEntry | undefined;
+    for (const entry of entries) {
+      const entryDate = new Date(entry.date);
+      const entryDateString = entryDate.toISOString().split('T')[0];
+      
+      if (entryDateString === targetDateString) {
+        matchingEntry = entry;
+        break;
+      }
+    }
     
-    if (!entry) return undefined;
+    if (!matchingEntry) {
+      return undefined;
+    }
     
     // Get time records for this entry
-    const entryTimeRecords = await db.select().from(timeRecords)
-      .where(eq(timeRecords.entryId, entry.id));
+    const timeRecordsData = await db.select()
+      .from(this.timeRecords)
+      .where(eq(this.timeRecords.entryId, matchingEntry.id));
     
     // Get habit records for this entry
-    const entryHabitRecords = await db.select().from(habitRecords)
-      .where(eq(habitRecords.entryId, entry.id));
+    const habitRecordsData = await db.select()
+      .from(this.habitRecords)
+      .where(eq(this.habitRecords.entryId, matchingEntry.id));
     
-    // Enrich records with subcategory and category info
-    const timeRecordsWithDetails = [];
-    for (const record of entryTimeRecords) {
-      const subcategory = await this.getSubcategory(record.subcategoryId);
-      if (subcategory) {
-        const category = await this.getCategory(subcategory.categoryId);
-        if (category) {
-          timeRecordsWithDetails.push({
+    // Enhance time records with subcategory information
+    const enhancedTimeRecords = await Promise.all(
+      timeRecordsData.map(async (record) => {
+        const subcategory = await this.getSubcategory(record.subcategoryId);
+        if (!subcategory) {
+          return {
             ...record,
-            subcategory: { ...subcategory, category }
-          });
+            subcategory: { id: 0, name: 'Unknown', categoryId: 0, goalMinutes: 0, goalType: 'time', displayId: null, priority: null, category: { id: 0, name: 'Unknown', userId: 0, goalHours: 0, color: '#cccccc', icon: '', monthlyGoalHours: 0, goalPeriod: 'daily', order: 0, uuid: null, prefix: null } }
+          };
         }
-      }
-    }
+        
+        const category = await this.getCategory(subcategory.categoryId);
+        if (!category) {
+          return {
+            ...record,
+            subcategory: { ...subcategory, category: { id: 0, name: 'Unknown', userId: 0, goalHours: 0, color: '#cccccc', icon: '', monthlyGoalHours: 0, goalPeriod: 'daily', order: 0, uuid: null, prefix: null } }
+          };
+        }
+        
+        return {
+          ...record,
+          subcategory: { ...subcategory, category }
+        };
+      })
+    );
     
-    const habitRecordsWithDetails = [];
-    for (const record of entryHabitRecords) {
-      const subcategory = await this.getSubcategory(record.subcategoryId);
-      if (subcategory) {
-        const category = await this.getCategory(subcategory.categoryId);
-        if (category) {
-          habitRecordsWithDetails.push({
+    // Enhance habit records with subcategory information
+    const enhancedHabitRecords = await Promise.all(
+      habitRecordsData.map(async (record) => {
+        const subcategory = await this.getSubcategory(record.subcategoryId);
+        if (!subcategory) {
+          return {
             ...record,
-            subcategory: { ...subcategory, category }
-          });
+            subcategory: { id: 0, name: 'Unknown', categoryId: 0, goalMinutes: 0, goalType: 'binary', displayId: null, priority: null, category: { id: 0, name: 'Unknown', userId: 0, goalHours: 0, color: '#cccccc', icon: '', monthlyGoalHours: 0, goalPeriod: 'daily', order: 0, uuid: null, prefix: null } }
+          };
         }
-      }
-    }
+        
+        const category = await this.getCategory(subcategory.categoryId);
+        if (!category) {
+          return {
+            ...record,
+            subcategory: { ...subcategory, category: { id: 0, name: 'Unknown', userId: 0, goalHours: 0, color: '#cccccc', icon: '', monthlyGoalHours: 0, goalPeriod: 'daily', order: 0, uuid: null, prefix: null } }
+          };
+        }
+        
+        return {
+          ...record,
+          subcategory: { ...subcategory, category }
+        };
+      })
+    );
     
     return {
-      ...entry,
-      timeRecords: timeRecordsWithDetails,
-      habitRecords: habitRecordsWithDetails
+      ...matchingEntry,
+      timeRecords: enhancedTimeRecords,
+      habitRecords: enhancedHabitRecords
     };
   }
-
+  
   async createDailyEntry(entry: InsertDailyEntry): Promise<DailyEntry> {
-    const [createdEntry] = await db.insert(dailyEntries).values(entry).returning();
-    return createdEntry;
+    const results = await db.insert(this.dailyEntries).values(entry).returning();
+    return results[0];
   }
-
+  
   async updateDailyEntry(id: number, entry: Partial<InsertDailyEntry>): Promise<DailyEntry | undefined> {
-    const [updatedEntry] = await db.update(dailyEntries)
+    const results = await db.update(this.dailyEntries)
       .set(entry)
-      .where(eq(dailyEntries.id, id))
+      .where(eq(this.dailyEntries.id, id))
       .returning();
-    return updatedEntry;
+    
+    return results[0];
   }
-
+  
   // Time record methods
   async createTimeRecord(record: InsertTimeRecord): Promise<TimeRecord> {
-    const [createdRecord] = await db.insert(timeRecords).values(record).returning();
-    return createdRecord;
-  }
-
-  async updateTimeRecord(entryId: number, subcategoryId: number, minutes: number): Promise<TimeRecord | undefined> {
     // Check if record already exists
-    const [existingRecord] = await db.select().from(timeRecords)
-      .where(
-        and(
-          eq(timeRecords.entryId, entryId),
-          eq(timeRecords.subcategoryId, subcategoryId)
-        )
-      );
+    const existingRecords = await db.select().from(this.timeRecords)
+      .where(and(
+        eq(this.timeRecords.entryId, record.entryId),
+        eq(this.timeRecords.subcategoryId, record.subcategoryId)
+      ));
     
-    if (!existingRecord) {
+    if (existingRecords.length > 0) {
+      // Update existing record
+      const updatedRecords = await db.update(this.timeRecords)
+        .set({ minutes: record.minutes })
+        .where(and(
+          eq(this.timeRecords.entryId, record.entryId),
+          eq(this.timeRecords.subcategoryId, record.subcategoryId)
+        ))
+        .returning();
+      
+      return updatedRecords[0];
+    }
+    
+    // Create new record
+    const results = await db.insert(this.timeRecords).values(record).returning();
+    return results[0];
+  }
+  
+  async updateTimeRecord(entryId: number, subcategoryId: number, minutes: number): Promise<TimeRecord | undefined> {
+    // Check if record exists
+    const existingRecords = await db.select().from(this.timeRecords)
+      .where(and(
+        eq(this.timeRecords.entryId, entryId),
+        eq(this.timeRecords.subcategoryId, subcategoryId)
+      ));
+    
+    if (existingRecords.length === 0) {
       // Create new record
-      return this.createTimeRecord({
+      const newRecord = await this.createTimeRecord({
         entryId,
         subcategoryId,
         minutes
       });
+      
+      return newRecord;
     }
     
     // Update existing record
-    const [updatedRecord] = await db.update(timeRecords)
+    const updatedRecords = await db.update(this.timeRecords)
       .set({ minutes })
-      .where(eq(timeRecords.id, existingRecord.id))
+      .where(and(
+        eq(this.timeRecords.entryId, entryId),
+        eq(this.timeRecords.subcategoryId, subcategoryId)
+      ))
       .returning();
-    return updatedRecord;
+    
+    return updatedRecords[0];
   }
-
+  
   // Habit record methods
   async createHabitRecord(record: InsertHabitRecord): Promise<HabitRecord> {
-    const [createdRecord] = await db.insert(habitRecords).values(record).returning();
-    return createdRecord;
-  }
-
-  async updateHabitRecord(entryId: number, subcategoryId: number, completed: boolean): Promise<HabitRecord | undefined> {
     // Check if record already exists
-    const [existingRecord] = await db.select().from(habitRecords)
-      .where(
-        and(
-          eq(habitRecords.entryId, entryId),
-          eq(habitRecords.subcategoryId, subcategoryId)
-        )
-      );
+    const existingRecords = await db.select().from(this.habitRecords)
+      .where(and(
+        eq(this.habitRecords.entryId, record.entryId),
+        eq(this.habitRecords.subcategoryId, record.subcategoryId)
+      ));
     
-    if (!existingRecord) {
+    if (existingRecords.length > 0) {
+      // Update existing record
+      const updatedRecords = await db.update(this.habitRecords)
+        .set({ completed: record.completed })
+        .where(and(
+          eq(this.habitRecords.entryId, record.entryId),
+          eq(this.habitRecords.subcategoryId, record.subcategoryId)
+        ))
+        .returning();
+      
+      return updatedRecords[0];
+    }
+    
+    // Create new record
+    const results = await db.insert(this.habitRecords).values(record).returning();
+    return results[0];
+  }
+  
+  async updateHabitRecord(entryId: number, subcategoryId: number, completed: boolean): Promise<HabitRecord | undefined> {
+    // Check if record exists
+    const existingRecords = await db.select().from(this.habitRecords)
+      .where(and(
+        eq(this.habitRecords.entryId, entryId),
+        eq(this.habitRecords.subcategoryId, subcategoryId)
+      ));
+    
+    if (existingRecords.length === 0) {
       // Create new record
-      return this.createHabitRecord({
+      const newRecord = await this.createHabitRecord({
         entryId,
         subcategoryId,
         completed
       });
+      
+      return newRecord;
     }
     
     // Update existing record
-    const [updatedRecord] = await db.update(habitRecords)
+    const updatedRecords = await db.update(this.habitRecords)
       .set({ completed })
-      .where(eq(habitRecords.id, existingRecord.id))
+      .where(and(
+        eq(this.habitRecords.entryId, entryId),
+        eq(this.habitRecords.subcategoryId, subcategoryId)
+      ))
       .returning();
-    return updatedRecord;
+    
+    return updatedRecords[0];
   }
-
-  // Setup default categories
+  
+  // Setup default categories for the user
   async setupDefaultCategories(userId: number): Promise<void> {
     for (let i = 0; i < defaultCategories.length; i++) {
       const cat = defaultCategories[i];
-      const category = await this.createCategory({
+      
+      // Create the category
+      const results = await db.insert(this.categories).values({
         userId,
         name: cat.name,
         color: cat.color,
         icon: cat.icon,
         goalHours: cat.goalHours,
-        uuid: uuidv4(), // Generate UUID for category
-        prefix: cat.prefix, // Use prefix from default category 
-        monthlyGoalHours: cat.monthlyGoalHours || 0,
-        goalPeriod: cat.goalPeriod || "daily",
-        order: i
-      });
+        order: i,
+        monthlyGoalHours: cat.goalHours * 30,
+        goalPeriod: 'daily',
+        prefix: cat.name.charAt(0).toUpperCase(),
+        uuid: `category-${cat.name}-${Date.now()}`
+      }).returning();
       
-      // Create subcategories with display IDs
-      let priority = 1;
-      for (const sub of cat.subcategories) {
-        await this.createSubcategory({
+      const category = results[0];
+      
+      // Create subcategories
+      for (let j = 0; j < cat.subcategories.length; j++) {
+        const sub = cat.subcategories[j];
+        await db.insert(this.subcategories).values({
           categoryId: category.id,
           name: sub.name,
           goalMinutes: sub.goalMinutes,
-          goalType: sub.goalType || "time",
-          displayId: sub.displayId || `${cat.prefix}${priority}`, // Use provided display ID or generate one
-          priority: sub.priority || priority++
+          goalType: sub.goalType as 'time' | 'binary',
+          displayId: `${category.prefix}${j+1}`,
+          priority: j
         });
       }
     }
   }
-
+  
   // Dashboard data method
   async getDashboardData(userId: number, date: Date): Promise<any> {
     const entry = await this.getDailyEntryByDate(userId, date);
     const categories = await this.getCategories(userId);
     
+    // Constants for time limits
+    const MAX_DAILY_HOURS = 24; // 24 hours per day
+    const MAX_MONTHLY_HOURS = 730.001; // 730.001 hours per month (30 days)
+    
+    // Track total monthly and daily allocations
+    let totalMonthlyGoalHours = 0;
+    let totalDailyGoalHours = 0;
+    
+    // Separate monthly and daily categories
+    const monthlyCategories: number[] = [];
+    const dailyCategories: number[] = [];
+    
+    // First pass: calculate totals and categorize by goal period
+    categories.forEach(category => {
+      if (category.goalPeriod === 'monthly' && category.monthlyGoalHours) {
+        totalMonthlyGoalHours += category.monthlyGoalHours;
+        monthlyCategories.push(category.id);
+      } else {
+        totalDailyGoalHours += category.goalHours;
+        dailyCategories.push(category.id);
+      }
+    });
+    
+    // Determine if adjustments are needed
+    const monthlyAdjustmentRatio = totalMonthlyGoalHours > MAX_MONTHLY_HOURS 
+      ? MAX_MONTHLY_HOURS / totalMonthlyGoalHours 
+      : 1;
+    
+    const dailyAdjustmentRatio = totalDailyGoalHours > MAX_DAILY_HOURS 
+      ? MAX_DAILY_HOURS / totalDailyGoalHours 
+      : 1;
+    
+    // Process categories with adjustments if needed
     const categoryData = categories.map(category => {
       let actualMinutes = 0;
       
@@ -910,21 +1204,39 @@ export class DatabaseStorage implements IStorage {
       
       const actualHours = actualMinutes / 60;
       
-      // Calculate the target hours based on goal period
+      // Calculate the target hours based on goal period with applicable adjustments
       let targetGoalHours = category.goalHours;
+      let adjustedGoalHours = targetGoalHours;
       
-      // If using monthly goal, convert to daily equivalent for progress calculation
+      // Apply monthly or daily adjustments as needed
       if (category.goalPeriod === 'monthly' && category.monthlyGoalHours) {
-        targetGoalHours = category.monthlyGoalHours / 30;
+        targetGoalHours = category.monthlyGoalHours / 30; // Convert to daily equivalent
+        
+        // Apply monthly adjustment if needed
+        if (monthlyAdjustmentRatio < 1) {
+          const adjustedMonthlyHours = category.monthlyGoalHours * monthlyAdjustmentRatio;
+          adjustedGoalHours = adjustedMonthlyHours / 30;
+        } else {
+          adjustedGoalHours = targetGoalHours;
+        }
+      } else if (dailyAdjustmentRatio < 1) {
+        // Apply daily adjustment if needed
+        adjustedGoalHours = category.goalHours * dailyAdjustmentRatio;
       }
       
-      // Calculate progress based on the correct goal
-      const progress = targetGoalHours > 0 ? (actualHours / targetGoalHours) * 100 : 0;
+      // Calculate progress based on the correct goal (but display against adjusted goal)
+      const progress = adjustedGoalHours > 0 ? (actualHours / adjustedGoalHours) * 100 : 0;
       
       return {
         ...category,
         actualHours,
-        progress: Math.min(progress, 100)
+        progress: Math.min(progress, 100),
+        // Include adjustment information
+        originalGoalHours: category.goalPeriod === 'monthly' ? category.monthlyGoalHours / 30 : category.goalHours,
+        adjustedGoalHours,
+        isAdjusted: category.goalPeriod === 'monthly' 
+          ? monthlyAdjustmentRatio < 1 
+          : dailyAdjustmentRatio < 1
       };
     });
     
@@ -934,14 +1246,39 @@ export class DatabaseStorage implements IStorage {
     const sleepDuration = entry?.sleepHours || 0;
     const healthBalance = entry?.healthBalance || 0;
     
+    // Include adjustment metadata
+    const timeConstraints = {
+      daily: {
+        totalHours: totalDailyGoalHours,
+        maxHours: MAX_DAILY_HOURS,
+        isAdjusted: dailyAdjustmentRatio < 1,
+        adjustmentRatio: dailyAdjustmentRatio
+      },
+      monthly: {
+        totalHours: totalMonthlyGoalHours,
+        maxHours: MAX_MONTHLY_HOURS,
+        isAdjusted: monthlyAdjustmentRatio < 1,
+        adjustmentRatio: monthlyAdjustmentRatio
+      }
+    };
+    
     return {
       dailyScore,
       motivationLevel,
       sleepDuration,
       healthBalance,
-      categories: categoryData
+      categories: categoryData,
+      timeConstraints
     };
   }
+  
+  // Class properties aliases to simplify code (avoid repeating imports)
+  private get users() { return users; }
+  private get categories() { return categories; }
+  private get subcategories() { return subcategories; }
+  private get dailyEntries() { return dailyEntries; }
+  private get timeRecords() { return timeRecords; }
+  private get habitRecords() { return habitRecords; }
 }
 
 // Use the database storage implementation
