@@ -523,11 +523,11 @@ function CategorySettings() {
                   </div>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row justify-between gap-2">
+                <div className="flex flex-col sm:flex-row justify-between gap-2 mt-4">
                   <Button 
                     onClick={() => updateCategoryMutation.mutate(activeCategory)}
                     disabled={updateCategoryMutation.isPending}
-                    className="w-full sm:w-auto"
+                    className="w-full order-1"
                   >
                     <Save className="h-4 w-4 mr-2" />
                     Save Category
@@ -542,7 +542,7 @@ function CategorySettings() {
                       }
                     }}
                     disabled={deleteCategoryMutation.isPending}
-                    className="w-full sm:w-auto"
+                    className="w-full order-2"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete Category
@@ -556,7 +556,7 @@ function CategorySettings() {
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-gray-700">Subcategories</h3>
                 
-                <div className="space-y-3">
+                <div className="space-y-3 overflow-x-auto pb-2">
                   {activeCategory.subcategories?.map((subcategory: any) => (
                     <div 
                       key={subcategory.id}
@@ -606,16 +606,18 @@ function CategorySettings() {
                             )}
                           </div>
                           
-                          <div className="flex justify-end space-x-2">
+                          <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:space-x-2">
                             <Button 
                               variant="outline"
                               onClick={() => setEditingSubcategory(null)}
+                              className="w-full sm:w-auto order-2 sm:order-1"
                             >
                               Cancel
                             </Button>
                             <Button 
                               onClick={() => updateSubcategoryMutation.mutate(editingSubcategory)}
                               disabled={updateSubcategoryMutation.isPending || !editingSubcategory.name}
+                              className="w-full sm:w-auto order-1 sm:order-2"
                             >
                               {updateSubcategoryMutation.isPending ? "Updating..." : "Update"}
                             </Button>
