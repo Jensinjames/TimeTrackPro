@@ -55,34 +55,58 @@ export function CategoryCard({
         <h3 className="text-white font-medium">{title}</h3>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="flex flex-col lg:flex-row">
-          <div className="p-4 lg:w-1/2 lg:border-r border-gray-200">
-            <h4 className="text-sm font-medium text-slate-600 mb-3">Current Reality</h4>
-            <ul className="space-y-2 mb-4">
-              {current.map((item, index) => (
-                <li key={index} className="flex justify-between text-sm">
-                  <span className="text-slate-500">{item.label}</span>
-                  <span className="font-medium">{item.value}</span>
-                </li>
-              ))}
-            </ul>
+        <div className="flex flex-col md:flex-row">
+          {/* Donut chart for smaller screens - positioned at the top */}
+          <div className="flex justify-center items-center mx-auto py-3 md:hidden">
+            <div style={{ height: 120, width: 120 }}>
+              <ResponsivePie
+                data={pieData}
+                margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
+                innerRadius={0.7}
+                padAngle={0.5}
+                cornerRadius={3}
+                activeOuterRadiusOffset={8}
+                colors={{ datum: 'data.color' }}
+                borderWidth={1}
+                borderColor={{ theme: 'background' }}
+                enableArcLabels={false}
+                enableArcLinkLabels={false}
+                isInteractive={false}
+                animate={false}
+              />
+            </div>
           </div>
-          <div className="p-4 lg:w-1/2 lg:border-l lg:-ml-px border-gray-200">
-            <h4 className="text-sm font-medium text-slate-600 mb-3">Goals</h4>
-            <ul className="space-y-2 mb-4">
-              {goals.map((item, index) => (
-                <li key={index} className="flex justify-between text-sm">
-                  <span className="text-slate-500">{item.label}</span>
-                  <span className="font-medium">{item.value}</span>
-                </li>
-              ))}
-            </ul>
+          
+          {/* Stats - 2 columns on mobile, side by side on larger screens */}
+          <div className="grid grid-cols-2 md:flex md:flex-row w-full">
+            <div className="p-3 md:p-4 md:w-1/2 md:border-r border-gray-200">
+              <h4 className="text-xs md:text-sm font-medium text-slate-600 mb-2 md:mb-3">Current Reality</h4>
+              <ul className="space-y-1 md:space-y-2 mb-2 md:mb-4">
+                {current.map((item, index) => (
+                  <li key={index} className="flex justify-between text-xs md:text-sm">
+                    <span className="text-slate-500">{item.label}</span>
+                    <span className="font-medium">{item.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="p-3 md:p-4 md:w-1/2 md:border-l md:-ml-px border-gray-200">
+              <h4 className="text-xs md:text-sm font-medium text-slate-600 mb-2 md:mb-3">Goals</h4>
+              <ul className="space-y-1 md:space-y-2 mb-2 md:mb-4">
+                {goals.map((item, index) => (
+                  <li key={index} className="flex justify-between text-xs md:text-sm">
+                    <span className="text-slate-500">{item.label}</span>
+                    <span className="font-medium">{item.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
         
-        {/* Donut chart */}
-        <div className="flex justify-center items-center mx-auto mb-4">
-          <div style={{ height: 160, width: 160 }}>
+        {/* Donut chart - only visible on medium screens and up */}
+        <div className="hidden md:flex justify-center items-center mx-auto mb-4">
+          <div style={{ height: 140, width: 140 }}>
             <ResponsivePie
               data={pieData}
               margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
@@ -112,13 +136,13 @@ export function CategoryCard({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-end p-4 pt-0 pb-3 border-t border-gray-100">
+      <CardFooter className="flex justify-end p-3 pt-0 pb-2 md:p-4 md:pt-0 md:pb-3 border-t border-gray-100">
         <button 
-          className="text-blue-600 hover:text-blue-800 flex items-center text-sm font-medium"
+          className="w-full md:w-auto text-blue-600 bg-blue-50 md:bg-transparent hover:bg-blue-100 md:hover:bg-transparent hover:text-blue-800 flex items-center justify-center md:justify-end text-xs md:text-sm font-medium py-1.5 px-3 md:p-0 rounded-md md:rounded-none"
           onClick={onViewDetails}
           aria-label={`View ${title} details`}
         >
-          View Details <ChevronRight className="h-4 w-4 ml-1" />
+          View Details <ChevronRight className="h-3 w-3 md:h-4 md:w-4 ml-1" />
         </button>
       </CardFooter>
     </Card>

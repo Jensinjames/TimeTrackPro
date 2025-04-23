@@ -190,17 +190,17 @@ export default function TimePies() {
         </div>
       )}
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Reality Pie Chart */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Reality (Actual Time)</CardTitle>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 break-words">
               Total tracked: {Math.floor(totalAllocatedRealityMinutes / 60)}h {totalAllocatedRealityMinutes % 60}m
               {unaccountedMinutes > 0 && ` • Unaccounted: ${Math.floor(unaccountedMinutes / 60)}h ${unaccountedMinutes % 60}m`}
             </p>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="h-[250px] md:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -208,7 +208,7 @@ export default function TimePies() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  outerRadius={80}
+                  outerRadius={75}
                   fill="#8884d8"
                   dataKey="value"
                   onClick={handlePieClick}
@@ -223,7 +223,12 @@ export default function TimePies() {
                     />
                   ))}
                 </Pie>
-                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+                <Legend 
+                  layout="horizontal" 
+                  verticalAlign="bottom" 
+                  align="center"
+                  wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                />
                 <Tooltip formatter={formatTooltip} />
               </PieChart>
             </ResponsiveContainer>
@@ -234,12 +239,12 @@ export default function TimePies() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Goals (Target Time)</CardTitle>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 break-words">
               Total goals: {Math.floor(totalAllocatedGoalMinutes / 60)}h {totalAllocatedGoalMinutes % 60}m
               {goalAdjustments && ` • Adjusted from ${Math.floor(goalAdjustments.originalTotalMinutes / 60)}h ${goalAdjustments.originalTotalMinutes % 60}m`}
             </p>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="h-[250px] md:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -247,7 +252,7 @@ export default function TimePies() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  outerRadius={80}
+                  outerRadius={75}
                   fill="#8884d8"
                   dataKey="value"
                   onClick={handlePieClick}
@@ -261,7 +266,12 @@ export default function TimePies() {
                     />
                   ))}
                 </Pie>
-                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+                <Legend 
+                  layout="horizontal" 
+                  verticalAlign="bottom" 
+                  align="center"
+                  wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                />
                 <Tooltip formatter={formatTooltip} />
               </PieChart>
             </ResponsiveContainer>
@@ -271,13 +281,13 @@ export default function TimePies() {
       
       {/* If a category is selected, show subcategory breakdowns */}
       {selectedCategory && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
           {/* Selected Category Reality Breakdown */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle>{selectedCategory} - Reality</CardTitle>
+              <CardTitle className="text-base md:text-lg truncate">{selectedCategory} - Reality</CardTitle>
             </CardHeader>
-            <CardContent className="h-[300px]">
+            <CardContent className="h-[250px] md:h-[300px]">
               {selectedCategoryReality?.subcategories ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -286,7 +296,7 @@ export default function TimePies() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      outerRadius={80}
+                      outerRadius={70}
                       fill="#8884d8"
                       dataKey="value"
                     >
@@ -297,7 +307,12 @@ export default function TimePies() {
                         />
                       ))}
                     </Pie>
-                    <Legend layout="vertical" verticalAlign="middle" align="right" />
+                    <Legend 
+                      layout={window.innerWidth < 768 ? "horizontal" : "vertical"} 
+                      verticalAlign={window.innerWidth < 768 ? "bottom" : "middle"} 
+                      align={window.innerWidth < 768 ? "center" : "right"}
+                      wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                    />
                     <Tooltip formatter={formatTooltip} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -312,9 +327,9 @@ export default function TimePies() {
           {/* Selected Category Goals Breakdown */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle>{selectedCategory} - Goals</CardTitle>
+              <CardTitle className="text-base md:text-lg truncate">{selectedCategory} - Goals</CardTitle>
             </CardHeader>
-            <CardContent className="h-[300px]">
+            <CardContent className="h-[250px] md:h-[300px]">
               {selectedCategoryGoals?.subcategories ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -323,7 +338,7 @@ export default function TimePies() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      outerRadius={80}
+                      outerRadius={70}
                       fill="#8884d8"
                       dataKey="value"
                     >
@@ -334,7 +349,12 @@ export default function TimePies() {
                         />
                       ))}
                     </Pie>
-                    <Legend layout="vertical" verticalAlign="middle" align="right" />
+                    <Legend 
+                      layout={window.innerWidth < 768 ? "horizontal" : "vertical"} 
+                      verticalAlign={window.innerWidth < 768 ? "bottom" : "middle"} 
+                      align={window.innerWidth < 768 ? "center" : "right"}
+                      wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                    />
                     <Tooltip formatter={formatTooltip} />
                   </PieChart>
                 </ResponsiveContainer>

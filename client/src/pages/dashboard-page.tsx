@@ -167,18 +167,20 @@ export default function DashboardPage() {
       
       {/* Date Range Controls */}
       <div className="mb-4 md:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
-        <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full md:w-auto">
+        <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
           {/* Date Range Picker */}
-          <DateRangePicker
-            value={dateRange}
-            onChange={setDateRange}
-            className="w-full md:w-auto"
-            presets={[7, 30, 90, 365, 1095]}
-          />
+          <div className="w-full md:w-auto">
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+              className="w-full"
+              presets={[7, 30, 90, 365, 1095]}
+            />
+          </div>
           
           {/* Daily Navigation - only visible when no date range is active */}
           {!dateRange?.from && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center md:justify-start space-x-2 mt-2 md:mt-0">
               <Button 
                 variant="outline" 
                 size="icon" 
@@ -189,7 +191,7 @@ export default function DashboardPage() {
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               
-              <span className="text-sm font-medium whitespace-nowrap">
+              <span className="text-sm font-medium whitespace-nowrap min-w-[150px] text-center">
                 {dateStr}
               </span>
               
@@ -240,7 +242,7 @@ export default function DashboardPage() {
       </div>
       
       {/* Category Cards Stack */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr">
         {categoryData.map(item => (
           <CategoryCard
             key={item.id}
