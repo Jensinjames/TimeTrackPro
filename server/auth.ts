@@ -49,15 +49,34 @@ export function setupAuth(app: Express) {
     saveUninitialized: true,
     store: storage.sessionStore,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days instead of 7
       httpOnly: true,
-      secure: false, // Set to false for development to allow HTTP
-      sameSite: "lax"
+      secure: process.env.NODE_ENV === 'production', // Only secure in production
+      sameSite: "lax",
+      path: '/'
     }
   };
 
   app.set("trust proxy", 1);
+  
+  // Log incoming requests to help diagnose session issues
+  app.use((req, res, next) => {
+    const cookies = req.headers.cookie || 'no cookies';
+    if (req.path === '/api/user' || req.path === '/api/dashboard') {
+      console.log(`Auth debug - Request to ${req.path} - Cookies: ${cookies.substring(0, 40)}...`);
+    }
+    next();
+  });
+  
   app.use(session(sessionSettings));
+  
+  app.use((req, res, next) => {
+    if (req.path === '/api/user' || req.path === '/api/dashboard') {
+      console.log(`Auth debug - Session ID: ${req.sessionID?.substring(0, 10) || 'none'}`);
+    }
+    next();
+  });
+  
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -89,13 +108,25 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => {
+    console.log(`Serializing user ID: ${user.id}`);
+    done(null, user.id);
+  });
+  
   passport.deserializeUser(async (id: number, done) => {
     try {
+      console.log(`Deserializing user ID: ${id}`);
       const user = await storage.getUser(id);
+      
+      if (!user) {
+        console.log(`User not found during deserialization: ${id}`);
+        return done(null, false);
+      }
+      
       done(null, user);
     } catch (error) {
-      done(error);
+      console.error(`Error during user deserialization:`, error);
+      done(error, false);
     }
   });
 

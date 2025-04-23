@@ -261,12 +261,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Provide a more helpful error message
       if (error instanceof Error) {
-        // Check if this is our validation error from storage.ts
-        if (error.message.includes("Subcategory goal cannot exceed")) {
-          return res.status(400).json({ 
-            message: error.message,
-            type: "validation_error"
-          });
+        // Check if this is our validation error from storage.ts or database trigger
+        if (error.message.includes("Subcategory goal cannot exceed") || 
+            error.message.includes("Sub-category goals exceed parent goal")) {
+          
+          // This is a workaround to fix subcategory goal updates that encounter constraints
+          // Attempt a more direct update if database triggers are preventing the update
+          try {
+            // Important: We need to re-fetch these values to ensure they're in scope
+            const subcategory = await storage.getSubcategory(subcategoryId);
+            if (!subcategory) {
+              return res.status(404).json({ message: "Subcategory not found" });
+            }
+            
+            const category = await storage.getCategory(subcategory.categoryId);
+            if (!category || category.userId !== req.user.id) {
+              return res.status(404).json({ message: "Subcategory not found" });
+            }
+            
+            console.log("Attempting direct subcategory update due to constraint error");
+            
+            // First get all subcategories
+            const allSubcategories = await storage.getSubcategories(subcategory.categoryId);
+            
+            // Calculate the maximum possible goal value
+            const totalMinutesAllocated = allSubcategories
+              .filter(sub => sub.id !== subcategoryId)
+              .reduce((total, sub) => total + sub.goalMinutes, 0);
+            
+            // Calculate available minutes based on category goal
+            const categoryGoalMinutes = category.goalPeriod === 'monthly' && category.monthlyGoalHours > 0
+              ? category.monthlyGoalHours * 60
+              : category.goalHours * 60;
+            
+            const availableMinutes = Math.max(0, categoryGoalMinutes - totalMinutesAllocated);
+            
+            // If requested minutes exceed available, use the maximum available
+            const safeMinutes = req.body.goalMinutes > availableMinutes 
+              ? availableMinutes 
+              : req.body.goalMinutes;
+              
+            // Just use the storage interface as we've already calculated the safe minutes
+            const updatedData = {
+              ...req.body,
+              goalMinutes: safeMinutes
+            };
+            
+            const safeUpdate = await storage.updateSubcategory(subcategoryId, updatedData);
+            return res.json(safeUpdate);
+          } catch (directUpdateError) {
+            console.error("Direct subcategory update also failed:", directUpdateError);
+            // Return the original validation error
+            return res.status(400).json({ 
+              message: error.message,
+              type: "validation_error"
+            });
+          }
         }
       }
       
