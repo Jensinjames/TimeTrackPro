@@ -95,16 +95,33 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
       }
       return res.json();
     },
-    onSuccess: () => {
-      // Only invalidate necessary queries
+    onSuccess: (updatedData) => {
+      // Force immediate invalidation and refetch
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
-      toast({
-        title: "Subcategory updated",
-        description: "Subcategory has been updated successfully",
-      });
-      onClose();
+      
+      // Force refetch of dashboard data too for KPI updates
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      
+      // Wait for UI to update by forcing microtask queueing
+      setTimeout(() => {
+        toast({
+          title: "Subcategory updated",
+          description: "Subcategory has been updated successfully",
+        });
+        onClose();
+      }, 100);
     },
     onError: (error: Error) => {
+      // Handle validation errors from the improved API
+      if (error.message.includes("goal") || error.message.includes("exceed")) {
+        toast({
+          title: "Goal validation error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
         title: "Failed to update subcategory",
         description: error.message || "An error occurred while updating the subcategory",
