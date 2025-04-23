@@ -1,0 +1,133 @@
+Here’s a concise, fool-proof TypeScript algorithm that:
+
+Enforces global time limits (e.g. 168 h/week or 730 h/month)
+
+Validates that each parent’s sub-allocations never exceed its own allocation
+
+Redistributes time when you drag-to-reorder (higher priority = larger share)
+
+Flags any over- or under-allocated situations for your UI to highlight
+
+1. Data Structures
+ts
+Copy
+Edit
+interface Subcategory {
+  id: string;
+  name: string;
+  // user’s desired allocation (in hours)
+  allocatedTime: number;
+  // lower number = higher priority (0 top, increasing)
+  priority: number;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  // user’s desired allocation (in hours)
+  allocatedTime: number;
+  subcategories: Subcategory[];
+}
+2. Core Functions
+ts
+Copy
+Edit
+/**
+ * Clamp all parent categories so their sum ≤ globalLimit,
+ * scaling them proportionally if needed.
+ */
+function enforceGlobalLimit(
+  categories: Category[],
+  globalLimit: number
+): void {
+  const sum = categories.reduce((acc, c) => acc + c.allocatedTime, 0);
+  if (sum <= globalLimit) return;
+  const scale = globalLimit / sum;
+  categories.forEach(c => {
+    c.allocatedTime *= scale;
+  });
+}
+
+/**
+ * For one category, ensure sum(subs) ≤ category.allocatedTime.
+ * If they exceed, redistribute sub-times proportionally to their weights.
+ * Weight = 1 / (priority+1), so top priority gets largest share.
+ */
+function redistributeSubcategories(cat: Category): void {
+  const totalSub = cat.subcategories.reduce((a, s) => a + s.allocatedTime, 0);
+  if (totalSub <= cat.allocatedTime) return;
+
+  // Compute weights from priorities
+  const weights = cat.subcategories.map(s => 1 / (s.priority + 1));
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+  // Assign new times by weight ratio
+  cat.subcategories.forEach((s, i) => {
+    s.allocatedTime = cat.allocatedTime * (weights[i] / totalWeight);
+  });
+}
+
+/**
+ * Validate and fix every category+subcategory
+ */
+function balanceAll(
+  categories: Category[],
+  globalLimit: number
+): void {
+  // 1. Enforce global limit among parents
+  enforceGlobalLimit(categories, globalLimit);
+
+  // 2. For each parent, redistribute its subs if needed
+  categories.forEach(cat => redistributeSubcategories(cat));
+}
+
+/**
+ * Call this when user drags to reorder subcategories.
+ * newOrder is array of subcategory IDs in descending priority.
+ */
+function onSubcategoryReorder(
+  cat: Category,
+  newOrder: string[]
+): void {
+  // 1. Reassign priorities based on position in newOrder
+  newOrder.forEach((subId, idx) => {
+    const sub = cat.subcategories.find(s => s.id === subId);
+    if (sub) sub.priority = idx;
+  });
+
+  // 2. Immediately rebalance this category’s subs
+  redistributeSubcategories(cat);
+}
+3. Usage Example
+ts
+Copy
+Edit
+// Suppose you have 4 categories for a week (168h total):
+const cats: Category[] = [
+  { id: "1", name: "Work",     allocatedTime: 60, subcategories: [ /*…*/ ] },
+  { id: "2", name: "Sleep",    allocatedTime: 56, subcategories: [ /*…*/ ] },
+  { id: "3", name: "Exercise", allocatedTime: 10, subcategories: [ /*…*/ ] },
+  { id: "4", name: "Leisure",  allocatedTime: 50, subcategories: [ /*…*/ ] },
+];
+
+// 1. Whenever allocations change (or on load):
+balanceAll(cats, 168);
+
+// 2. If user drags a subcategory to top in “Work”:
+onSubcategoryReorder(
+  cats[0],
+  ["work-critical-task", "work-emails", "work-meetings"]
+);
+
+// 3. Re-render your dashboard—any category or subcategory
+//    whose allocatedTime was adjusted can be highlighted if needed.
+Why this works
+Global clamp keeps the sum of parent allocations within your available horizon.
+
+Priority-based weighting on subcategories ensures that dragging to the top proportionally boosts that subcategory’s share.
+
+Proportional scaling preserves relative intentions whenever any sum overshoots.
+
+Modular functions let you hook into your existing state/store logic (e.g. React/Redux) so your charts and KPI cards stay in sync.
+
+With this in place, your UI can simply call balanceAll(…) after any edit, and onSubcategoryReorder(…) on drag events—and your dashboards will always reflect a valid, “fool-proof” allocation.
