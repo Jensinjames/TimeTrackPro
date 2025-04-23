@@ -1,0 +1,109 @@
+/public/reference/dashboard-stack.png now shows the exact UI we must hit.
+
+High-Level Objectives
+
+Replicate the reference layout pixel-for-pixel (±4 px) on desktop and mobile.
+
+Single-page dashboard (app/dashboard/page.tsx).
+
+Pie charts & KPI tiles must match reference screenshot.
+
+“Add Entry” flow fixed.
+
+Fully responsive (≥320 px).
+
+Preset date-range buttons (7/30/90/365/1095 days).
+
+Step-by-Step Tasks
+
+Routing & Skeleton
+
+(same as before)
+
+Sidebar: fixed 72 px wide, collapsible on < 640 px.
+
+Breadcrumb + h1 “Dashboard” inside top bar (flex justify-between items-center).
+
+KPI Tiles (top row)
+
+Implement <KpiCard> component.
+
+Props: icon, label, value, subLabel? (e.g. “Overall daily performance score”).
+
+4-column grid on ≥1024 px, 2-column on 640-1023 px, 1-column below.
+
+Style: Tailwind classes
+
+txt
+Copy
+Edit
+rounded-lg bg-white dark:bg-slate-800 shadow px-4 py-3
+Icon container 36 × 36 px, background bg-slate-100, icon size 20 px, color text-primary-600.
+
+Category Cards (stack layout)
+
+Component <CategoryCard> receives
+
+ts
+Copy
+Edit
+{
+  title: 'Faith' | 'Life' | 'Work' | 'Health',
+  color: string,          // header & donut color
+  current: {label:string,value:string}[],
+  goals:   {label:string,value:string}[]
+}
+Header bar height 40 px – background = color.
+
+Inner layout: two columns (Current Reality | Goals) at ≥1024 px; stack vertically on mobile.
+
+Donut chart centred (nivo pie) diameter 160 px desktop / 128 px mobile, thickness 16 px, gap 4 px.
+
+Footer link “View Details →” right-aligned, color link blue.
+
+
+Title	Header/Donut Color
+Faith	#119447
+Life	#C48A00
+Work	#D63031
+Health	#EC407A
+Add Entry Dialog
+
+(unchanged logic)
+
+Mobile: full-screen slide-up (sheet); Desktop: centred modal 560 px.
+
+Date-Range Picker
+
+(unchanged)
+
+Preset buttons rendered as Outline Buttons; active state bg-primary-600 text-white.
+
+Responsive & Accessibility
+
+Grid rules from previous prompt.
+
+Ensure touch targets ≥ 44 × 44 px.
+
+All interactive items have aria-label.
+
+Constraints (unchanged)
+
+No backend/schema changes, strict TS, no inline CSS, Lighthouse ≥90 mobile, tests pass.
+
+Acceptance Tests
+
+npm run lint / test / build → green.
+
+Visual regression – running playwright test:e2e must report < 2 % pixel diff against /tests/screenshots/dashboard-desktop.png and /tests/screenshots/dashboard-mobile.png.
+
+Manual QA
+
+(same as before)
+
+Compare spacing/color to reference image side-by-side ≤ 4 px tolerance.
+
+Output
+Branch feat/dashboard-stack-layout, commit title:
+
+ui: replicate reference stacked dashboard, responsive KPI & category cards
