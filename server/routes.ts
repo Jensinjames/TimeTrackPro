@@ -536,18 +536,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const categoryGoalsMap = new Map();
     
     // Set up initial data structure for all categories
-    let totalGoalMinutes = 0; // Track total goal minutes to ensure 24-hour constraint
+    let totalDailyGoalMinutes = 0; // Track total daily goal minutes to ensure 24-hour constraint
+    let totalMonthlyGoalMinutes = 0; // Track total monthly goal minutes to ensure 730.001-hour constraint
+    
+    // Define time constraints
+    const MAX_DAILY_MINUTES = 1440; // 24 hours in minutes
+    const MAX_MONTHLY_MINUTES = 43800.06; // 730.001 hours in minutes for a 30-day month
+    
+    // Track which categories use monthly goals
+    const monthlyCategories = [];
+    const dailyCategories = [];
     
     for (const category of categories) {
-      const goalMinutes = category.goalHours * 60;
-      totalGoalMinutes += goalMinutes; // Sum up all goal minutes
+      // Determine if this is a monthly or daily goal category
+      const isMonthlyGoal = category.goalPeriod === 'monthly' && category.monthlyGoalHours > 0;
+      const goalMinutes = isMonthlyGoal 
+        ? category.monthlyGoalHours * 60 
+        : category.goalHours * 60;
+      
+      // Track goals by type
+      if (isMonthlyGoal) {
+        totalMonthlyGoalMinutes += goalMinutes;
+        monthlyCategories.push(category.id);
+      } else {
+        totalDailyGoalMinutes += goalMinutes;
+        dailyCategories.push(category.id);
+      }
       
       categoryRealityMap.set(category.id, {
         id: category.id, // Store ID for reference
         name: category.name,
         value: 0,
         color: category.color,
-        subcategories: []
+        subcategories: [],
+        isMonthlyGoal
       });
       
       categoryGoalsMap.set(category.id, {
@@ -556,7 +578,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         value: goalMinutes,
         originalGoal: goalMinutes, // Keep original goal for comparison
         color: category.color,
-        subcategories: []
+        subcategories: [],
+        isMonthlyGoal
       });
       
       // Initialize subcategory data
@@ -577,24 +600,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    // Adjust goals if they exceed 24 hours (1440 minutes)
-    const MAX_DAILY_MINUTES = 1440;
-    if (totalGoalMinutes > MAX_DAILY_MINUTES) {
-      console.log(`Goals exceed 24 hours (${totalGoalMinutes} minutes). Adjusting proportionally.`);
+    // Adjust daily goals if they exceed 24 hours (1440 minutes)
+    if (totalDailyGoalMinutes > MAX_DAILY_MINUTES && dailyCategories.length > 0) {
+      console.log(`Daily goals exceed 24 hours (${totalDailyGoalMinutes} minutes). Adjusting proportionally.`);
       
-      // Calculate adjustment ratio to fit all goals within 24 hours
-      const adjustmentRatio = MAX_DAILY_MINUTES / totalGoalMinutes;
+      // Calculate adjustment ratio to fit all daily goals within 24 hours
+      const adjustmentRatio = MAX_DAILY_MINUTES / totalDailyGoalMinutes;
       
-      // Adjust all category goals proportionally
-      for (const [categoryId, categoryData] of categoryGoalsMap.entries()) {
-        const adjustedValue = Math.floor(categoryData.value * adjustmentRatio);
-        categoryData.value = adjustedValue;
-        
-        // Also adjust subcategory goals proportionally
-        if (categoryData.subcategories && categoryData.subcategories.length > 0) {
-          categoryData.subcategories.forEach((subcategory: any) => {
-            subcategory.value = Math.floor(subcategory.value * adjustmentRatio);
-          });
+      // Adjust all daily category goals proportionally
+      for (const categoryId of dailyCategories) {
+        const categoryData = categoryGoalsMap.get(categoryId);
+        if (categoryData) {
+          const adjustedValue = Math.floor(categoryData.value * adjustmentRatio);
+          categoryData.value = adjustedValue;
+          
+          // Also adjust subcategory goals proportionally
+          if (categoryData.subcategories && categoryData.subcategories.length > 0) {
+            categoryData.subcategories.forEach((subcategory: any) => {
+              subcategory.value = Math.floor(subcategory.value * adjustmentRatio);
+            });
+          }
+        }
+      }
+    }
+    
+    // Adjust monthly goals if they exceed 730.001 hours (43800.06 minutes)
+    if (totalMonthlyGoalMinutes > MAX_MONTHLY_MINUTES && monthlyCategories.length > 0) {
+      console.log(`Monthly goals exceed 730.001 hours (${totalMonthlyGoalMinutes} minutes). Adjusting proportionally.`);
+      
+      // Calculate adjustment ratio to fit all monthly goals within 730.001 hours
+      const adjustmentRatio = MAX_MONTHLY_MINUTES / totalMonthlyGoalMinutes;
+      
+      // Adjust all monthly category goals proportionally
+      for (const categoryId of monthlyCategories) {
+        const categoryData = categoryGoalsMap.get(categoryId);
+        if (categoryData) {
+          const adjustedValue = Math.floor(categoryData.value * adjustmentRatio);
+          categoryData.value = adjustedValue;
+          
+          // Also adjust subcategory goals proportionally
+          if (categoryData.subcategories && categoryData.subcategories.length > 0) {
+            categoryData.subcategories.forEach((subcategory: any) => {
+              subcategory.value = Math.floor(subcategory.value * adjustmentRatio);
+            });
+          }
         }
       }
     }
@@ -650,12 +699,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const goalsData = Array.from(categoryGoalsMap.values())
       .filter((category: any) => category.value > 0);
     
-    // Include information about goal adjustments due to 24-hour constraint
-    const goalAdjustments = totalGoalMinutes > MAX_DAILY_MINUTES ? {
-      originalTotalMinutes: totalGoalMinutes,
+    // Include information about goal adjustments due to time constraints
+    const dailyGoalAdjustments = totalDailyGoalMinutes > MAX_DAILY_MINUTES ? {
+      type: 'daily',
+      originalTotalMinutes: totalDailyGoalMinutes,
       adjustedTotalMinutes: MAX_DAILY_MINUTES,
-      adjustmentRatio: MAX_DAILY_MINUTES / totalGoalMinutes
+      adjustmentRatio: MAX_DAILY_MINUTES / totalDailyGoalMinutes
     } : null;
+    
+    const monthlyGoalAdjustments = totalMonthlyGoalMinutes > MAX_MONTHLY_MINUTES ? {
+      type: 'monthly',
+      originalTotalMinutes: totalMonthlyGoalMinutes,
+      adjustedTotalMinutes: MAX_MONTHLY_MINUTES,
+      adjustmentRatio: MAX_MONTHLY_MINUTES / totalMonthlyGoalMinutes
+    } : null;
+    
+    // Prepare the goal adjustments data for return
+    let goalAdjustments = null;
+    if (dailyGoalAdjustments || monthlyGoalAdjustments) {
+      goalAdjustments = {
+        daily: dailyGoalAdjustments,
+        monthly: monthlyGoalAdjustments
+      };
+    }
     
     return {
       reality: realityData,
