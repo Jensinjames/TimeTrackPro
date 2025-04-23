@@ -1,0 +1,157 @@
+Search
+Time
+Deployment
+Source
+Log
+2025-04-22 13:13:49.69
+0ff85614
+User
+6:13:49 PM [express] GET /api/user 401 in 57ms
+2025-04-22 13:13:58.36
+0ff85614
+User
+Login attempt for username: jensinR
+2025-04-22 13:13:58.40
+0ff85614
+User
+User found: jensinR, id: 2
+2025-04-22 13:13:58.40
+0ff85614
+User
+Comparing supplied password with stored hash: 54061681f5147b5f829d...
+2025-04-22 13:13:58.50
+0ff85614
+User
+Password comparison result: true
+2025-04-22 13:13:58.50
+0ff85614
+User
+Successful login for user: jensinR
+2025-04-22 13:13:58.58
+0ff85614
+User
+6:13:58 PM [express] POST /api/login 200 in 245ms :: {"id":2,"username":"jensinR","email":"jensin@th…
+2025-04-22 13:13:59.03
+0ff85614
+User
+6:13:59 PM [express] GET /api/categories 304 in 306ms :: [{"id":6,"userId":2,"name":"Faith","color":…
+2025-04-22 13:13:59.98
+0ff85614
+User
+6:13:59 PM [express] GET /api/dashboard 200 in 1314ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:14:06.30
+0ff85614
+User
+6:14:06 PM [express] GET /api/dashboard 304 in 1231ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:14:08.99
+0ff85614
+User
+6:14:08 PM [express] GET /api/dashboard 200 in 1279ms :: {"reality":[{"name":"Faith","value":150,"co…
+2025-04-22 13:14:12.66
+0ff85614
+User
+6:14:12 PM [express] GET /api/dashboard 304 in 1250ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:14:19.14
+0ff85614
+User
+6:14:19 PM [express] GET /api/dashboard 304 in 1402ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:14:20.95
+0ff85614
+User
+6:14:20 PM [express] GET /api/categories 304 in 188ms :: [{"id":6,"userId":2,"name":"Faith","color":…
+2025-04-22 13:14:30.02
+0ff85614
+User
+6:14:30 PM [express] PATCH /api/categories/7 200 in 136ms :: {"id":7,"userId":2,"name":"Life","color…
+2025-04-22 13:14:30.31
+0ff85614
+User
+6:14:30 PM [express] GET /api/categories 200 in 223ms :: [{"id":6,"userId":2,"name":"Faith","color":…
+2025-04-22 13:14:54.79
+0ff85614
+User
+6:14:54 PM [express] GET /api/dashboard 200 in 391ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+2025-04-22 13:14:54.79
+0ff85614
+User
+6:14:54 PM [express] GET /api/dashboard 200 in 386ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+2025-04-22 13:14:54.81
+0ff85614
+User
+6:14:54 PM [express] GET /api/dashboard 200 in 375ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+2025-04-22 13:14:54.81
+0ff85614
+User
+6:14:54 PM [express] GET /api/dashboard 200 in 398ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+2025-04-22 13:14:54.81
+0ff85614
+User
+6:14:54 PM [express] GET /api/dashboard 200 in 381ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+2025-04-22 13:14:54.82
+0ff85614
+User
+6:14:54 PM [express] GET /api/dashboard 200 in 410ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+2025-04-22 13:14:55.73
+0ff85614
+User
+6:14:55 PM [express] GET /api/entries 200 in 1321ms :: {"id":3,"userId":2,"date":"2025-04-22T02:12:2…
+2025-04-22 13:14:55.90
+0ff85614
+User
+6:14:55 PM [express] GET /api/dashboard 200 in 1455ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:15:05.84
+0ff85614
+User
+6:15:05 PM [express] GET /api/entries 200 in 104ms :: {"id":null,"date":"2025-04-21T05:00:00.000Z","…
+2025-04-22 13:15:06.00
+0ff85614
+User
+6:15:06 PM [express] GET /api/categories 304 in 257ms :: [{"id":6,"userId":2,"name":"Faith","color":…
+2025-04-22 13:15:13.69
+0ff85614
+User
+6:15:13 PM [express] GET /api/dashboard 200 in 1143ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:15:18.84
+0ff85614
+User
+6:15:18 PM [express] GET /api/dashboard 200 in 1138ms :: {"reality":[{"name":"Faith","value":150,"co…
+2025-04-22 13:15:19.99
+0ff85614
+User
+6:15:19 PM [express] GET /api/dashboard 304 in 1216ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:15:26.21
+0ff85614
+User
+6:15:26 PM [express] GET /api/dashboard 304 in 1140ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:15:32.40
+0ff85614
+User
+6:15:32 PM [express] GET /api/dashboard 304 in 1114ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:15:38.61
+0ff85614
+User
+6:15:38 PM [express] GET /api/dashboard 304 in 1127ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:15:44.15
+0ff85614
+User
+6:15:44 PM [express] GET /api/entries 200 in 1052ms :: {"id":3,"userId":2,"date":"2025-04-22T02:12:2…
+2025-04-22 13:15:47.81
+0ff85614
+User
+6:15:47 PM [express] GET /api/dashboard 200 in 1117ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:15:53.96
+0ff85614
+User
+6:15:53 PM [express] GET /api/dashboard 304 in 1086ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:16:00.14
+0ff85614
+User
+6:16:00 PM [express] GET /api/dashboard 304 in 1098ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:16:06.32
+0ff85614
+User
+6:16:06 PM [express] GET /api/dashboard 304 in 1103ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
+2025-04-22 13:16:12.51
+0ff85614
+User
+6:16:12 PM [express] GET /api/dashboard 304 in 1100ms :: {"dailyScore":3,"motivationLevel":3,"sleepD…
