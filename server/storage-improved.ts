@@ -129,9 +129,9 @@ export class ImprovedDatabaseStorage implements IStorage {
   }
 
   /**
-   * Override the setupDefaultCategories method to set up monthly goals
+   * Setup default categories with monthly goals
    */
-  override async setupDefaultCategories(userId: number): Promise<void> {
+  async setupDefaultCategories(userId: number): Promise<void> {
     for (let i = 0; i < defaultCategories.length; i++) {
       const cat = defaultCategories[i];
       

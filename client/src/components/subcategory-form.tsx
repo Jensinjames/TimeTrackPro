@@ -56,6 +56,7 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   // Create subcategory mutation
   const createSubcategoryMutation = useMutation({
     mutationFn: async (subcategoryData: SubcategoryFormData) => {
+      console.log("Creating subcategory:", subcategoryData);
       const res = await apiRequest("POST", "/api/subcategories", subcategoryData);
       if (!res.ok) {
         const errorData = await res.json();
@@ -63,14 +64,28 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
       }
       return res.json();
     },
-    onSuccess: () => {
-      // Only invalidate category-specific queries for better performance
+    onSuccess: (createdData) => {
+      console.log("Subcategory created successfully:", createdData);
+      
+      // Force immediate invalidation and refetch multiple collections
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
-      toast({
-        title: "Subcategory created",
-        description: "Subcategory has been created successfully",
-      });
-      onClose();
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      
+      // Guarantee UI refresh by forcing refetch of specific categories
+      if (createdData && createdData.categoryId) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/categories/${createdData.categoryId}`] 
+        });
+      }
+      
+      // Wait for UI to update before showing toast and closing
+      setTimeout(() => {
+        toast({
+          title: "Subcategory created",
+          description: "Subcategory has been created successfully",
+        });
+        onClose();
+      }, 300);
     },
     onError: (error: Error) => {
       toast({
@@ -84,6 +99,7 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   // Update subcategory mutation
   const updateSubcategoryMutation = useMutation({
     mutationFn: async (subcategoryData: SubcategoryFormData) => {
+      console.log("Updating subcategory:", subcategoryData);
       const res = await apiRequest("PATCH", `/api/subcategories/${subcategoryData.id}`, {
         name: subcategoryData.name,
         goalType: subcategoryData.goalType,
@@ -96,20 +112,27 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
       return res.json();
     },
     onSuccess: (updatedData) => {
-      // Force immediate invalidation and refetch
-      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      console.log("Subcategory updated successfully:", updatedData);
       
-      // Force refetch of dashboard data too for KPI updates
+      // Force immediate invalidation and refetch multiple collections
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       
-      // Wait for UI to update by forcing microtask queueing
+      // Guarantee UI refresh by forcing refetch of specific categories
+      if (updatedData && updatedData.categoryId) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/categories/${updatedData.categoryId}`] 
+        });
+      }
+      
+      // Ensure the toast and close happen after the UI has a chance to update
       setTimeout(() => {
         toast({
           title: "Subcategory updated",
           description: "Subcategory has been updated successfully",
         });
         onClose();
-      }, 100);
+      }, 300);
     },
     onError: (error: Error) => {
       // Handle validation errors from the improved API
