@@ -579,16 +579,94 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSubcategory(subcategory: InsertSubcategory): Promise<Subcategory> {
-    const [createdSubcategory] = await db.insert(subcategories).values(subcategory).returning();
-    return createdSubcategory;
+    try {
+      // Check if the subcategory goal minutes exceed category goal
+      if (subcategory.goalMinutes > 0) {
+        // Get the parent category
+        const category = await this.getCategory(subcategory.categoryId);
+        if (!category) {
+          throw new Error("Parent category not found");
+        }
+        
+        // Get all existing subcategories for this category
+        const existingSubcategories = await this.getSubcategories(category.categoryId);
+        
+        // Calculate total minutes allocated to existing subcategories
+        const totalExistingMinutes = existingSubcategories.reduce(
+          (sum, sub) => sum + sub.goalMinutes, 0
+        );
+        
+        // Calculate the category's total goal minutes
+        const categoryTotalMinutes = category.goalPeriod === 'monthly' 
+          ? (category.monthlyGoalHours * 60)
+          : (category.goalHours * 60);
+        
+        // Calculate available minutes
+        const availableMinutes = Math.max(0, categoryTotalMinutes - totalExistingMinutes);
+        
+        // Check if the new subcategory's goal fits within the available minutes
+        if (subcategory.goalMinutes > availableMinutes) {
+          throw new Error(`Subcategory goal cannot exceed ${Math.floor(availableMinutes / 60)} hours ${availableMinutes % 60} minutes`);
+        }
+      }
+      
+      // If checks pass, create the subcategory
+      const [createdSubcategory] = await db.insert(subcategories).values(subcategory).returning();
+      return createdSubcategory;
+    } catch (error) {
+      console.error("Error in createSubcategory:", error);
+      throw error;
+    }
   }
 
   async updateSubcategory(id: number, subcategory: Partial<InsertSubcategory>): Promise<Subcategory | undefined> {
-    const [updatedSubcategory] = await db.update(subcategories)
-      .set(subcategory)
-      .where(eq(subcategories.id, id))
-      .returning();
-    return updatedSubcategory;
+    try {
+      // If we're updating goalMinutes, verify it doesn't exceed the parent category goal
+      if (subcategory.goalMinutes !== undefined) {
+        // First get the existing subcategory to find its category
+        const existingSubcategory = await this.getSubcategory(id);
+        if (!existingSubcategory) {
+          throw new Error("Subcategory not found");
+        }
+        
+        // Get the parent category
+        const category = await this.getCategory(existingSubcategory.categoryId);
+        if (!category) {
+          throw new Error("Parent category not found");
+        }
+        
+        // Get all subcategories for this category
+        const allSubcategories = await this.getSubcategories(category.categoryId);
+        
+        // Calculate total minutes for all subcategories except this one
+        const totalOtherSubcategoryMinutes = allSubcategories
+          .filter(sub => sub.id !== id)
+          .reduce((sum, sub) => sum + sub.goalMinutes, 0);
+        
+        // Calculate the maximum allowed for this subcategory
+        // Use the daily or monthly goals based on the category's goalPeriod
+        const categoryTotalMinutes = category.goalPeriod === 'monthly' 
+          ? (category.monthlyGoalHours * 60)
+          : (category.goalHours * 60);
+          
+        const maxAllowedMinutes = Math.max(0, categoryTotalMinutes - totalOtherSubcategoryMinutes);
+        
+        // Check if the new value would exceed the limit
+        if (subcategory.goalMinutes > maxAllowedMinutes) {
+          throw new Error(`Subcategory goal cannot exceed ${Math.floor(maxAllowedMinutes / 60)} hours ${maxAllowedMinutes % 60} minutes`);
+        }
+      }
+      
+      // If no issues, proceed with the update
+      const [updatedSubcategory] = await db.update(subcategories)
+        .set(subcategory)
+        .where(eq(subcategories.id, id))
+        .returning();
+      return updatedSubcategory;
+    } catch (error) {
+      console.error("Error in updateSubcategory:", error);
+      throw error;
+    }
   }
 
   async deleteSubcategory(id: number): Promise<void> {

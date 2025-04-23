@@ -219,6 +219,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(subcategory);
     } catch (error) {
       console.error("Error creating subcategory:", error);
+      
+      // Provide more helpful error messages
+      if (error instanceof Error) {
+        // Check if this is our validation error from storage.ts
+        if (error.message.includes("Subcategory goal cannot exceed")) {
+          return res.status(400).json({ 
+            message: error.message,
+            type: "validation_error"
+          });
+        }
+      }
+      
+      // Default error response
       res.status(500).json({ message: "Failed to create subcategory" });
     }
   });
@@ -245,6 +258,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedSubcategory);
     } catch (error) {
       console.error("Error updating subcategory:", error);
+      
+      // Provide a more helpful error message
+      if (error instanceof Error) {
+        // Check if this is our validation error from storage.ts
+        if (error.message.includes("Subcategory goal cannot exceed")) {
+          return res.status(400).json({ 
+            message: error.message,
+            type: "validation_error"
+          });
+        }
+      }
+      
+      // Default error response
       res.status(500).json({ message: "Failed to update subcategory" });
     }
   });
