@@ -45,13 +45,13 @@ export async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "very-secret-key-for-development-only",
-    resave: true,
-    saveUninitialized: true,
+    resave: false,  // Changed to false to avoid session race conditions
+    saveUninitialized: false, // Changed to false for more secure behavior
     store: storage.sessionStore,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days instead of 7
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Only secure in production
+      secure: false, // Always false for development environment
       sameSite: "lax",
       path: '/'
     }

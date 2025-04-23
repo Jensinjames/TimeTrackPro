@@ -907,4 +907,6 @@ export class DatabaseStorage implements IStorage {
 }
 
 // Use the database storage implementation
+// We'll create and export the actual storage instance in the index.ts file
+// to avoid circular dependencies
 export const storage = new DatabaseStorage();

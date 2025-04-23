@@ -1,4 +1,13 @@
-import { users, categories, subcategories, dailyEntries, timeRecords, habitRecords, defaultCategories } from "@shared/schema";
+// We need a complete fresh implementation with proper interfaces
+import { 
+  users, 
+  categories, 
+  subcategories, 
+  dailyEntries, 
+  timeRecords, 
+  habitRecords, 
+  defaultCategories 
+} from "@shared/schema";
 import type {
   User,
   InsertUser,
@@ -15,20 +24,32 @@ import type {
   CategoryWithSubcategories,
   DailyEntryWithDetails
 } from "@shared/schema";
-import { DatabaseStorage } from "./storage";
+import { IStorage } from './storage';
 import { db } from "./db";
 import { eq, and, gte, lte } from "drizzle-orm";
+import MemoryStore from "memorystore";
+import session from "express-session";
 
 /**
  * Improved storage implementation with better handling of:
  * - Monthly goals
  * - Unaccounted time tracking
  */
-export class ImprovedDatabaseStorage extends DatabaseStorage {
+export class ImprovedDatabaseStorage implements IStorage {
+  sessionStore: any;
+
+  constructor() {
+    // Setup memory session store
+    const SessionStore = MemoryStore(session);
+    this.sessionStore = new SessionStore({
+      checkPeriod: 86400000 // Prune expired entries every 24h
+    });
+  }
+
   /**
-   * Override the getDashboardData method to add unaccounted time calculation
+   * Get dashboardData with unaccounted time calculation
    */
-  override async getDashboardData(userId: number, date: Date): Promise<any> {
+  async getDashboardData(userId: number, date: Date): Promise<any> {
     // Get daily entry and categories from parent methods
     const entry = await this.getDailyEntryByDate(userId, date);
     const categories = await this.getCategories(userId);

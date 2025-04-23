@@ -1,8 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { ImprovedDatabaseStorage } from "./storage-improved";
-// Use the improved storage implementation that handles unaccounted time better
-const storage = new ImprovedDatabaseStorage();
+// Import the storage interface from storage.ts
+import { storage } from "./storage";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { addDays, startOfDay, endOfDay, format } from "date-fns";
 import { DailyEntryWithDetails } from "../shared/schema";
