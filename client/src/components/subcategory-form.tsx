@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, memo, useEffect } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -7,6 +7,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Define a proper type for the parent category
+interface CategoryWithSubcategories {
+  id: number;
+  name: string;
+  goalHours: number;
+  color: string;
+  icon: string;
+  userId: number;
+  monthlyGoalHours?: number;
+  goalPeriod?: string;
+  order?: number;
+  subcategories?: Array<{
+    id: number;
+    name: string;
+    goalType: string;
+    goalMinutes: number;
+    categoryId: number;
+  }>;
+}
 
 // Define a proper type for the subcategory
 interface SubcategoryFormData {
@@ -51,13 +71,43 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   const [subcategory, setSubcategory] = useState<SubcategoryFormData>(initialSubcategory);
   
   // Get the parent category to properly index and relate subcategory changes
-  const { data: parentCategory } = useQuery({
+  const { data: parentCategory } = useQuery<CategoryWithSubcategories>({
     queryKey: [`/api/categories/${initialSubcategory.categoryId}`],
     enabled: !!initialSubcategory.categoryId
   });
   
   // Debounce changes to reduce renders
   const debouncedSubcategory = useDebounce<SubcategoryFormData>(subcategory, 100);
+  
+  // Add effect to update subcategory goal when parent category changes
+  useEffect(() => {
+    // Calculate max allowed hours is a function defined later in this component
+    // So we need to define a function inside useEffect to use it properly
+    const updateGoalBasedOnCategory = () => {
+      if (parentCategory && subcategory.goalType === 'time' && !isNew) {
+        // Check if current goal exceeds the maximum allowed
+        const currentGoalHours = subcategory.goalHours || 0;
+        const maxAllowedHours = calculateMaxAllowedHours();
+        
+        // If current goal exceeds the max allowed, adjust it
+        if (currentGoalHours > maxAllowedHours) {
+          setSubcategory(prev => ({
+            ...prev,
+            goalHours: maxAllowedHours,
+            goalMinutes: Math.round(maxAllowedHours * 60)
+          }));
+          
+          toast({
+            title: "Goal adjusted",
+            description: `Goal has been adjusted to ${maxAllowedHours.toFixed(1)} hours to fit within the parent category's limit.`,
+            variant: "destructive",
+          });
+        }
+      }
+    };
+    
+    updateGoalBasedOnCategory();
+  }, [parentCategory, subcategory.goalType, subcategory.goalHours, isNew, toast]);
   
   // Create subcategory mutation
   const createSubcategoryMutation = useMutation({
@@ -202,7 +252,7 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
       toast({
         title: "Goal adjusted",
         description: `Goal has been adjusted to ${finalHours} hours to fit within the parent category's limit.`,
-        variant: "warning",
+        variant: "destructive",
       });
     }
     
@@ -221,18 +271,36 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   const isSubmitting = createSubcategoryMutation.isPending || updateSubcategoryMutation.isPending;
   
   // Calculate maximum allowed goal based on parent category
-  const calculateMaxAllowedHours = () => {
-    if (!parentCategory) return 10; // Default fallback
+  const calculateMaxAllowedHours = (): number => {
+    // If we don't have the parent category data yet, use a reasonable default
+    if (!parentCategory) return 10; 
     
-    // Get the category's goal hours
-    const categoryGoalHours = parentCategory.goalHours || 0;
+    // Get the category's goal hours - safely ensure we have a number
+    const categoryGoalHours = typeof parentCategory.goalHours === 'number' 
+      ? parentCategory.goalHours 
+      : typeof parentCategory.goalHours === 'string'
+        ? parseFloat(parentCategory.goalHours)
+        : 0;
     
-    // If this is an update, we need to check other subcategories
-    if (!isNew && parentCategory.subcategories) {
-      // Calculate total hours allocated to other subcategories
+    // If this is an existing subcategory, calculate remaining available hours
+    if (!isNew && parentCategory.subcategories && Array.isArray(parentCategory.subcategories)) {
+      // Create a type for our subcategory items
+      type SubcategoryItem = {
+        id: number;
+        goalType: string;
+        goalMinutes: number;
+      };
+      
+      // Calculate total hours allocated to other subcategories (excluding the current one)
       const totalOtherSubcategoryMinutes = parentCategory.subcategories
-        .filter(sub => sub.id !== subcategory.id && sub.goalType === 'time')
-        .reduce((total, sub) => total + sub.goalMinutes, 0);
+        .filter((sub: SubcategoryItem) => 
+          sub.id !== subcategory.id && 
+          sub.goalType === 'time'
+        )
+        .reduce((total: number, sub: SubcategoryItem) => 
+          total + (typeof sub.goalMinutes === 'number' ? sub.goalMinutes : 0), 
+          0
+        );
       
       // Convert to hours
       const totalOtherSubcategoryHours = totalOtherSubcategoryMinutes / 60;
@@ -276,7 +344,20 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
       
       {subcategory.goalType === 'time' && (
         <div>
-          <Label>Goal (hours)</Label>
+          <div className="flex justify-between items-center">
+            <Label>Goal (hours)</Label>
+            {!isNew && parentCategory && (
+              <div className={`text-xs ${
+                calculateMaxAllowedHours() < 1 
+                  ? 'text-red-500 font-semibold' 
+                  : calculateMaxAllowedHours() < 2 
+                    ? 'text-amber-500' 
+                    : 'text-gray-500'
+              }`}>
+                Available: {calculateMaxAllowedHours().toFixed(1)} hours
+              </div>
+            )}
+          </div>
           <Select
             value={subcategory.goalHours?.toString() || '1'}
             onValueChange={(value) => handleInputChange('goalHours', parseFloat(value))}
