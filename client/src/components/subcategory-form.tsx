@@ -263,15 +263,6 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
     }
   };
   
-  // Determine if the form inputs are valid and that the goal isn't exceeding limits
-  const isValid = debouncedSubcategory.name && 
-    (debouncedSubcategory.goalType !== 'time' || 
-      (debouncedSubcategory.goalHours && 
-        (isNew || parseFloat(debouncedSubcategory.goalHours.toString()) <= calculateMaxAllowedHours())));
-  
-  // Determine if the form is submitting
-  const isSubmitting = createSubcategoryMutation.isPending || updateSubcategoryMutation.isPending;
-  
   // Calculate maximum allowed goal based on parent category
   const calculateMaxAllowedHours = (): number => {
     // If we don't have the parent category data yet, use a reasonable default
@@ -314,6 +305,15 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
     // For new subcategories, return the category goal hours
     return categoryGoalHours;
   };
+  
+  // Determine if the form inputs are valid and that the goal isn't exceeding limits
+  const isValid = debouncedSubcategory.name && 
+    (debouncedSubcategory.goalType !== 'time' || 
+      (debouncedSubcategory.goalHours && 
+        (isNew || parseFloat(debouncedSubcategory.goalHours.toString()) <= calculateMaxAllowedHours())));
+  
+  // Determine if the form is submitting
+  const isSubmitting = createSubcategoryMutation.isPending || updateSubcategoryMutation.isPending;
 
   return (
     <div className="space-y-4 p-4 border border-gray-200 rounded-md bg-gray-50">
