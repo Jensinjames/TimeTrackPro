@@ -536,10 +536,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const categoryGoalsMap = new Map();
     
     // Set up initial data structure for all categories
+    let totalGoalMinutes = 0; // Track total goal minutes to ensure 24-hour constraint
+    
     for (const category of categories) {
       const goalMinutes = category.goalHours * 60;
+      totalGoalMinutes += goalMinutes; // Sum up all goal minutes
       
       categoryRealityMap.set(category.id, {
+        id: category.id, // Store ID for reference
         name: category.name,
         value: 0,
         color: category.color,
@@ -547,8 +551,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       categoryGoalsMap.set(category.id, {
+        id: category.id, // Store ID for reference
         name: category.name,
         value: goalMinutes,
+        originalGoal: goalMinutes, // Keep original goal for comparison
         color: category.color,
         subcategories: []
       });
@@ -557,14 +563,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const subcategory of category.subcategories || []) {
         // Ensure subcategory goal is initialized for goals pie
         const subcategoryGoalData = {
+          id: subcategory.id, // Store ID for reference
           name: subcategory.name,
           value: subcategory.goalMinutes || 0,
+          originalGoal: subcategory.goalMinutes || 0, // Keep original goal for comparison
           color: category.color // Use category color with slight variation if needed
         };
         
         const subGoals = categoryGoalsMap.get(category.id);
         if (subGoals && subGoals.subcategories) {
           subGoals.subcategories.push(subcategoryGoalData);
+        }
+      }
+    }
+    
+    // Adjust goals if they exceed 24 hours (1440 minutes)
+    const MAX_DAILY_MINUTES = 1440;
+    if (totalGoalMinutes > MAX_DAILY_MINUTES) {
+      console.log(`Goals exceed 24 hours (${totalGoalMinutes} minutes). Adjusting proportionally.`);
+      
+      // Calculate adjustment ratio to fit all goals within 24 hours
+      const adjustmentRatio = MAX_DAILY_MINUTES / totalGoalMinutes;
+      
+      // Adjust all category goals proportionally
+      for (const [categoryId, categoryData] of categoryGoalsMap.entries()) {
+        const adjustedValue = Math.floor(categoryData.value * adjustmentRatio);
+        categoryData.value = adjustedValue;
+        
+        // Also adjust subcategory goals proportionally
+        if (categoryData.subcategories && categoryData.subcategories.length > 0) {
+          categoryData.subcategories.forEach((subcategory: any) => {
+            subcategory.value = Math.floor(subcategory.value * adjustmentRatio);
+          });
         }
       }
     }
@@ -599,6 +629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             categoryData.subcategories[existingSubIndex].value += minutes;
           } else {
             categoryData.subcategories.push({
+              id: subcategory.id, // Store ID for reference
               name: subcategory.name,
               value: minutes,
               color: category.color // Use category color with slight variation if needed
@@ -619,11 +650,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const goalsData = Array.from(categoryGoalsMap.values())
       .filter((category: any) => category.value > 0);
     
+    // Include information about goal adjustments due to 24-hour constraint
+    const goalAdjustments = totalGoalMinutes > MAX_DAILY_MINUTES ? {
+      originalTotalMinutes: totalGoalMinutes,
+      adjustedTotalMinutes: MAX_DAILY_MINUTES,
+      adjustmentRatio: MAX_DAILY_MINUTES / totalGoalMinutes
+    } : null;
+    
     return {
       reality: realityData,
       goals: goalsData,
       unaccountedMinutes,
-      totalDays
+      totalDays,
+      goalAdjustments // Include information about adjustments
     };
   }
   

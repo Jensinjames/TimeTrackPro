@@ -7,10 +7,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 
 // Type for our pie chart data
 type PieData = {
+  id?: number;
   name: string;
   value: number;
   color: string;
-  subcategories?: { name: string; value: number; color: string }[];
+  originalGoal?: number;
+  isUnaccounted?: boolean;
+  subcategories?: { id?: number; name: string; value: number; color: string; originalGoal?: number; }[];
 };
 
 export default function TimePies() {
@@ -110,6 +113,7 @@ export default function TimePies() {
   // Extract data for reality and goals pie charts
   const realityData = timeAllocationData.reality || [];
   const goalsData = timeAllocationData.goals || [];
+  const goalAdjustments = timeAllocationData.goalAdjustments;
   
   // Find selected category data for subcategory pie charts
   const selectedCategoryReality = realityData.find(
@@ -126,9 +130,20 @@ export default function TimePies() {
     realityData.push({
       name: 'Unaccounted',
       value: unaccountedMinutes,
-      color: '#000000' // Black for unaccounted time
+      color: '#7A7A7A', // Gray for unaccounted time
+      isUnaccounted: true // Flag to identify this slice
     });
   }
+  
+  // Calculate total allocated minutes
+  const totalAllocatedGoalMinutes = goalsData.reduce((total, category) => {
+    return total + (category.value || 0);
+  }, 0);
+  
+  // Calculate total reality minutes
+  const totalAllocatedRealityMinutes = realityData.reduce((total, category) => {
+    return total + (category.value || 0);
+  }, 0) - unaccountedMinutes; // Remove unaccounted time
   
   // Color generation utils (fallback if colors aren't provided from backend)
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A44A3F', '#2C7873', '#705E78', '#A63D40'];
@@ -147,11 +162,43 @@ export default function TimePies() {
   
   return (
     <div className="space-y-6">
+      {/* Goal Adjustment Notification */}
+      {goalAdjustments && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-md p-3 mb-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm font-medium">Time Goal Adjustment Applied</p>
+              <p className="text-xs mt-1">
+                Your total goal time exceeds 24 hours ({Math.round(goalAdjustments.originalTotalMinutes / 60)} hours). 
+                Goals have been proportionally adjusted to fit the 24-hour day.
+              </p>
+              <details className="mt-1">
+                <summary className="text-xs font-medium text-blue-700 cursor-pointer">View details</summary>
+                <div className="mt-2 p-2 bg-blue-100 rounded text-xs">
+                  <p>Original total: {Math.floor(goalAdjustments.originalTotalMinutes / 60)}h {goalAdjustments.originalTotalMinutes % 60}m</p>
+                  <p>Adjusted to: 24h 0m</p>
+                  <p>Adjustment ratio: {Math.round(goalAdjustments.adjustmentRatio * 100)}%</p>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Reality Pie Chart */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Reality (Actual Time)</CardTitle>
+            <p className="text-xs text-gray-500">
+              Total tracked: {Math.floor(totalAllocatedRealityMinutes / 60)}h {totalAllocatedRealityMinutes % 60}m
+              {unaccountedMinutes > 0 && ` • Unaccounted: ${Math.floor(unaccountedMinutes / 60)}h ${unaccountedMinutes % 60}m`}
+            </p>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -172,6 +219,7 @@ export default function TimePies() {
                       fill={entry.color || getColor(index)}
                       stroke={entry.name === selectedCategory ? '#fff' : 'none'}
                       strokeWidth={entry.name === selectedCategory ? 2 : 0}
+                      style={{ opacity: entry.isUnaccounted ? 0.7 : 1 }}
                     />
                   ))}
                 </Pie>
@@ -186,6 +234,10 @@ export default function TimePies() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Goals (Target Time)</CardTitle>
+            <p className="text-xs text-gray-500">
+              Total goals: {Math.floor(totalAllocatedGoalMinutes / 60)}h {totalAllocatedGoalMinutes % 60}m
+              {goalAdjustments && ` • Adjusted from ${Math.floor(goalAdjustments.originalTotalMinutes / 60)}h ${goalAdjustments.originalTotalMinutes % 60}m`}
+            </p>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
