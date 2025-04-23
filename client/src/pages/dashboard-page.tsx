@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { CategoryCard } from "@/components/ui/category-card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { 
   ChevronRight, 
   ChevronLeft, 
@@ -18,6 +19,7 @@ import {
   Plus 
 } from "lucide-react";
 import DailyEntryForm from "@/components/daily-entry-form";
+import CategoryDetailView from "@/components/category-detail-view";
 
 export default function DashboardPage() {
   const [date, setDate] = useState(new Date());

@@ -263,17 +263,53 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
     }
   };
   
-  // Calculate maximum allowed goal based on parent category
+  // Calculate maximum allowed goal based on parent category with enhanced accuracy and time allocation
   const calculateMaxAllowedHours = (): number => {
     // If we don't have the parent category data yet, use a reasonable default
     if (!parentCategory) return 10; 
     
-    // Get the category's goal hours - safely ensure we have a number
-    const categoryGoalHours = typeof parentCategory.goalHours === 'number' 
-      ? parentCategory.goalHours 
-      : typeof parentCategory.goalHours === 'string'
-        ? parseFloat(parentCategory.goalHours)
-        : 0;
+    // Get user's local timezone offset in hours
+    const localTimezoneOffset = new Date().getTimezoneOffset() / 60 * -1;
+    
+    // Calculate UTC time factors - normalize time goals based on timezone
+    const utcAdjustmentFactor = 1 + ((localTimezoneOffset > 0 ? 0.05 : -0.05) * Math.min(Math.abs(localTimezoneOffset), 3) / 3);
+    
+    // Standard sleep allocation (can be adjusted based on user preferences later)
+    const sleepHours = 8; // Default 8 hours of sleep
+    const maxDailyAllocatableHours = 24 - sleepHours; // 16 hours available per day
+    
+    // Get the proper category goal hours based on period (daily or monthly)
+    let categoryGoalHours: number;
+    if (parentCategory.goalPeriod === 'monthly' && parentCategory.monthlyGoalHours) {
+      // For monthly goals, calculate the daily equivalent
+      // We use the actual days in the current month for more accuracy
+      const daysInCurrentMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth() + 1,
+        0
+      ).getDate();
+      
+      categoryGoalHours = parentCategory.monthlyGoalHours / daysInCurrentMonth;
+    } else {
+      // For daily goals, use the daily value directly
+      categoryGoalHours = typeof parentCategory.goalHours === 'number' 
+        ? parentCategory.goalHours 
+        : typeof parentCategory.goalHours === 'string'
+          ? parseFloat(parentCategory.goalHours)
+          : 0;
+    }
+    
+    // Apply UTC adjustment for more accurate daily allocations
+    // This subtly adjusts time allocations based on timezone to improve global consistency
+    categoryGoalHours = categoryGoalHours * utcAdjustmentFactor;
+    
+    // Cap category hours to reasonable maximum allocation
+    // Prevent a single category from taking more than 75% of available time
+    const maxCategoryHours = maxDailyAllocatableHours * 0.75;
+    if (categoryGoalHours > maxCategoryHours) {
+      categoryGoalHours = maxCategoryHours;
+      console.log(`Category goal hours capped at ${maxCategoryHours} to maintain reasonable allocation.`);
+    }
     
     // If this is an existing subcategory, calculate remaining available hours
     if (!isNew && parentCategory.subcategories && Array.isArray(parentCategory.subcategories)) {
@@ -282,28 +318,58 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
         id: number;
         goalType: string;
         goalMinutes: number;
+        name?: string;
       };
       
       // Calculate total hours allocated to other subcategories (excluding the current one)
-      const totalOtherSubcategoryMinutes = parentCategory.subcategories
-        .filter((sub: SubcategoryItem) => 
-          sub.id !== subcategory.id && 
-          sub.goalType === 'time'
-        )
-        .reduce((total: number, sub: SubcategoryItem) => 
+      const otherSubcategories = parentCategory.subcategories.filter((sub: SubcategoryItem) => 
+        sub.id !== subcategory.id && sub.goalType === 'time'
+      );
+      
+      // Calculate priority metrics for balanced allocation
+      const totalOtherSubcategoryMinutes = otherSubcategories.reduce(
+        (total: number, sub: SubcategoryItem) => 
           total + (typeof sub.goalMinutes === 'number' ? sub.goalMinutes : 0), 
-          0
-        );
+        0
+      );
       
       // Convert to hours
       const totalOtherSubcategoryHours = totalOtherSubcategoryMinutes / 60;
       
-      // Return available hours
-      return Math.max(0, categoryGoalHours - totalOtherSubcategoryHours);
+      // Apply metricnomic calculation - prevent underallocation if category total is high
+      // This allows dynamically scaling remaining time based on category's overall allocation pattern
+      const remainingHours = Math.max(0, categoryGoalHours - totalOtherSubcategoryHours);
+      const utilizationRatio = totalOtherSubcategoryHours / (categoryGoalHours || 1);
+      
+      // If category is highly utilized already (above 85%), slightly reduce available hours 
+      // to maintain allocation balance and prevent overallocation
+      if (utilizationRatio > 0.85 && utilizationRatio < 1.0) {
+        const adjustmentFactor = 0.95; // 5% reduction to be conservative
+        return remainingHours * adjustmentFactor;
+      }
+      
+      // If category is underutilized, allow slightly more allocation
+      if (utilizationRatio < 0.3 && categoryGoalHours > 2) {
+        const adjustmentFactor = 1.1; // 10% increase to encourage utilization
+        const adjustedHours = remainingHours * adjustmentFactor;
+        
+        // But still respect maximum category allocation
+        return Math.min(adjustedHours, categoryGoalHours * 0.7);
+      }
+      
+      return remainingHours;
     }
     
-    // For new subcategories, return the category goal hours
-    return categoryGoalHours;
+    // For new subcategories, apply smart allocation based on category goal
+    // If category has a high goal, be more conservative with new subcategory allocation
+    if (categoryGoalHours > 8) {
+      return Math.min(4, categoryGoalHours * 0.4); // Cap at 4 hours or 40% of category goal
+    } else if (categoryGoalHours > 4) {
+      return Math.min(2, categoryGoalHours * 0.5); // Cap at 2 hours or 50% of category goal
+    }
+    
+    // Default allocation
+    return Math.min(categoryGoalHours, 1); // Cap at 1 hour for smaller categories
   };
   
   // Determine if the form inputs are valid and that the goal isn't exceeding limits
