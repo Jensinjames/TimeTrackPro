@@ -125,20 +125,20 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
   return (
     <Card className="overflow-hidden border-gray-200 shadow-sm">
       <CardHeader 
-        className="p-4 flex flex-row items-center bg-gray-50 border-b"
+        className="p-3 md:p-4 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-0 bg-gray-50 border-b"
         style={{ borderBottomColor: category.color }}
       >
         <Button 
           variant="ghost" 
           size="sm" 
-          className="mr-2" 
+          className="mr-auto md:mr-2 -ml-2 mb-1 md:mb-0" 
           onClick={onBack}
         >
           <ChevronLeft className="w-4 h-4 mr-1" />
           Back
         </Button>
         
-        <div className="flex flex-col">
+        <div className="flex flex-col w-full">
           <div className="flex items-center">
             <div 
               className={`h-6 w-6 rounded-full flex items-center justify-center mr-2`}
@@ -146,13 +146,13 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
             >
               <i className={`${getCategoryIcon(category.icon)} text-white text-xs`}></i>
             </div>
-            <h3 className="text-lg font-medium">{category.name} Details</h3>
+            <h3 className="text-base md:text-lg font-medium truncate">{category.name} Details</h3>
           </div>
-          <div className="text-xs text-gray-500 ml-8 flex gap-2">
+          <div className="text-xs text-gray-500 ml-8 flex flex-wrap gap-2">
             <span className="font-mono">ID: {category.id}</span>
-            <span>|</span>
+            <span className="hidden md:inline">|</span>
             <span>Period: {category.goalPeriod || 'daily'}</span>
-            <span>|</span>
+            <span className="hidden md:inline">|</span>
             <span>Goal: {category.goalPeriod === 'monthly' && category.monthlyGoalHours 
               ? `${category.monthlyGoalHours}h/month` 
               : `${category.goalHours}h/day`}
@@ -163,26 +163,26 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
       
       <CardContent className="p-0">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="w-full flex justify-center px-6 pt-4 pb-0 bg-white">
-            <TabsTrigger value="overview" className="flex items-center">
-              <BarChart className="w-4 h-4 mr-1" />
+          <TabsList className="w-full flex justify-center px-2 md:px-6 pt-3 md:pt-4 pb-0 bg-white overflow-x-auto no-scrollbar">
+            <TabsTrigger value="overview" className="flex items-center text-xs md:text-sm whitespace-nowrap">
+              <BarChart className="w-3 h-3 md:w-4 md:h-4 mr-1 flex-shrink-0" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="time-allocation" className="flex items-center">
-              <Clock className="w-4 h-4 mr-1" />
+            <TabsTrigger value="time-allocation" className="flex items-center text-xs md:text-sm whitespace-nowrap">
+              <Clock className="w-3 h-3 md:w-4 md:h-4 mr-1 flex-shrink-0" />
               Time Allocation
             </TabsTrigger>
-            <TabsTrigger value="goals" className="flex items-center">
-              <Calendar className="w-4 h-4 mr-1" />
+            <TabsTrigger value="goals" className="flex items-center text-xs md:text-sm whitespace-nowrap">
+              <Calendar className="w-3 h-3 md:w-4 md:h-4 mr-1 flex-shrink-0" />
               Goal Tracking
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="overview" className="px-6 pt-4 pb-6 space-y-6">
+          <TabsContent value="overview" className="px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 space-y-4 md:space-y-6">
             {/* Progress Card */}
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-gray-50 rounded-lg p-3 md:p-4">
               <div className="flex justify-between items-baseline mb-2">
-                <h4 className="text-sm font-medium text-gray-700">Current Progress</h4>
+                <h4 className="text-xs md:text-sm font-medium text-gray-700">Current Progress</h4>
                 <span className="text-xs text-gray-500">
                   {formatHours(category.actualHours)} / {formatHours(dailyGoal)}
                 </span>
@@ -199,37 +199,37 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
             </div>
             
             {/* Statistics Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-1">Time Balance</h4>
-                <div className="flex flex-col space-y-2">
-                  <div className="flex justify-between text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              <div className="bg-gray-50 rounded-lg p-3 md:p-4">
+                <h4 className="text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">Time Balance</h4>
+                <div className="flex flex-col space-y-1 md:space-y-2">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Daily Goal</span>
                     <span className="font-medium">{formatHours(dailyGoal)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Monthly Goal</span>
                     <span className="font-medium">{formatHours(monthlyGoal)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Goal Period</span>
                     <span className="font-medium capitalize">{category.goalPeriod || 'Daily'}</span>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-1">Time Constraints</h4>
-                <div className="flex flex-col space-y-2">
-                  <div className="flex justify-between text-sm">
+              <div className="bg-gray-50 rounded-lg p-3 md:p-4">
+                <h4 className="text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">Time Constraints</h4>
+                <div className="flex flex-col space-y-1 md:space-y-2">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Available Daily</span>
                     <span className="font-medium">{formatHours(availableDailyHoursLeft)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Timezone</span>
                     <span className="font-medium">{timezoneDisplay}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Sleep Adjustment</span>
                     <span className="font-medium">{sleepHours} hours</span>
                   </div>
@@ -239,20 +239,20 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
             
             {/* Subcategory List */}
             <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Subcategories</h4>
+              <h4 className="text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">Subcategories</h4>
               {category.subcategories && category.subcategories.length > 0 ? (
                 <ul className="space-y-2">
                   {category.subcategories.map(subcategory => (
                     <li 
                       key={subcategory.id} 
-                      className="bg-white border border-gray-200 rounded-md p-3 flex justify-between items-center"
+                      className="bg-white border border-gray-200 rounded-md p-2 md:p-3 flex justify-between items-center"
                     >
-                      <div>
+                      <div className="min-w-0 pr-2">
                         <div className="flex items-center">
-                          <span className="font-medium text-sm">{subcategory.name}</span>
-                          <span className="text-xs text-gray-500 font-mono ml-2">(ID: {subcategory.id})</span>
+                          <span className="font-medium text-xs md:text-sm truncate">{subcategory.name}</span>
+                          <span className="hidden sm:inline text-xs text-gray-500 font-mono ml-2 whitespace-nowrap">(ID: {subcategory.id})</span>
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 truncate">
                           {subcategory.goalType === 'time' 
                             ? `${formatHours(subcategory.goalMinutes / 60)} goal`
                             : subcategory.goalType === 'habit' 
@@ -260,10 +260,10 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                               : 'Yes/No goal'}
                         </div>
                       </div>
-                      <div>
+                      <div className="flex-shrink-0">
                         {subcategory.goalType === 'time' && (
                           <div 
-                            className="text-xs px-2 py-1 rounded-full"
+                            className="text-xs px-2 py-1 rounded-full whitespace-nowrap"
                             style={{ 
                               backgroundColor: `${category.color}20`, 
                               color: category.color 
@@ -277,7 +277,7 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                   ))}
                 </ul>
               ) : (
-                <div className="text-center py-4 text-gray-500">
+                <div className="text-center py-3 md:py-4 text-xs md:text-sm text-gray-500">
                   No subcategories found for this category.
                 </div>
               )}
