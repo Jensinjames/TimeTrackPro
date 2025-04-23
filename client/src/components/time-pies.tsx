@@ -136,12 +136,12 @@ export default function TimePies() {
   }
   
   // Calculate total allocated minutes
-  const totalAllocatedGoalMinutes = goalsData.reduce((total, category) => {
+  const totalAllocatedGoalMinutes = goalsData.reduce((total: number, category: PieData) => {
     return total + (category.value || 0);
   }, 0);
   
   // Calculate total reality minutes
-  const totalAllocatedRealityMinutes = realityData.reduce((total, category) => {
+  const totalAllocatedRealityMinutes = realityData.reduce((total: number, category: PieData) => {
     return total + (category.value || 0);
   }, 0) - unaccountedMinutes; // Remove unaccounted time
   
@@ -290,7 +290,7 @@ export default function TimePies() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {selectedCategoryReality.subcategories.map((entry: any, index: number) => (
+                      {selectedCategoryReality.subcategories.map((entry: {name: string; value: number; color: string}, index: number) => (
                         <Cell 
                           key={`subcell-${index}`} 
                           fill={entry.color || getColor(index)} 
@@ -327,7 +327,7 @@ export default function TimePies() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {selectedCategoryGoals.subcategories.map((entry: any, index: number) => (
+                      {selectedCategoryGoals.subcategories.map((entry: {name: string; value: number; color: string}, index: number) => (
                         <Cell 
                           key={`subcell-${index}`} 
                           fill={entry.color || getColor(index)} 
