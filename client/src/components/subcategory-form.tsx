@@ -263,9 +263,11 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
     }
   };
   
-  // Determine if the form inputs are valid
+  // Determine if the form inputs are valid and that the goal isn't exceeding limits
   const isValid = debouncedSubcategory.name && 
-    (debouncedSubcategory.goalType !== 'time' || debouncedSubcategory.goalHours);
+    (debouncedSubcategory.goalType !== 'time' || 
+      (debouncedSubcategory.goalHours && 
+        (isNew || parseFloat(debouncedSubcategory.goalHours.toString()) <= calculateMaxAllowedHours())));
   
   // Determine if the form is submitting
   const isSubmitting = createSubcategoryMutation.isPending || updateSubcategoryMutation.isPending;
