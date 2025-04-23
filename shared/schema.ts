@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, real, timestamp, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { v4 as uuidv4 } from 'uuid';
 
 // User schema
 export const users = pgTable("users", {
@@ -29,6 +30,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
 // Categories schema
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
+  uuid: text("uuid").notNull().default(""), // UUID will be set during creation
+  prefix: text("prefix").notNull(), // Add prefix for subcategory naming (e.g., "F" for Faith)
   userId: integer("user_id").notNull(),
   name: text("name").notNull(),
   color: text("color").notNull(),
@@ -46,10 +49,12 @@ export const insertCategorySchema = createInsertSchema(categories).omit({
 // Subcategories schema
 export const subcategories = pgTable("subcategories", {
   id: serial("id").primaryKey(),
+  displayId: text("display_id"), // Display ID like F1, W2, etc. based on category prefix
   categoryId: integer("category_id").notNull(),
   name: text("name").notNull(),
   goalMinutes: integer("goal_minutes").notNull(),
   goalType: text("goal_type").notNull().default("time"), // "time" or "binary"
+  priority: integer("priority").default(0), // Add explicit priority field for better control
 });
 
 export const insertSubcategorySchema = createInsertSchema(subcategories).omit({
@@ -100,58 +105,62 @@ export const insertHabitRecordSchema = createInsertSchema(habitRecords).omit({
 export const defaultCategories = [
   {
     name: "Faith",
+    prefix: "F", // Prefix for subcategory IDs like F1, F2, etc.
     color: "#16A34A",
     icon: "pray",
     goalHours: 1, // Daily goal of 1 hour
     monthlyGoalHours: 30, // Monthly goal of 30 hours
     goalPeriod: "monthly", // Use monthly goal period by default
     subcategories: [
-      { name: "Daily Prayer", goalMinutes: 30, goalType: "time" },
-      { name: "Meditation", goalMinutes: 20, goalType: "time" },
-      { name: "Scripture Study", goalMinutes: 30, goalType: "time" },
+      { name: "Daily Prayer", goalMinutes: 30, goalType: "time", displayId: "F1", priority: 1 },
+      { name: "Meditation", goalMinutes: 20, goalType: "time", displayId: "F2", priority: 2 },
+      { name: "Scripture Study", goalMinutes: 30, goalType: "time", displayId: "F3", priority: 3 },
     ],
   },
   {
     name: "Life",
+    prefix: "L",
     color: "#D97706",
     icon: "sun",
     goalHours: 2,
     monthlyGoalHours: 60,
     goalPeriod: "daily",
     subcategories: [
-      { name: "Family Time", goalMinutes: 180, goalType: "time" },
-      { name: "Social Activities", goalMinutes: 360, goalType: "time" },
-      { name: "Hobbies", goalMinutes: 300, goalType: "time" },
+      { name: "Family Time", goalMinutes: 180, goalType: "time", displayId: "L1", priority: 1 },
+      { name: "Social Activities", goalMinutes: 360, goalType: "time", displayId: "L2", priority: 2 },
+      { name: "Hobbies", goalMinutes: 300, goalType: "time", displayId: "L3", priority: 3 },
     ],
   },
   {
     name: "Work",
+    prefix: "W",
     color: "#DC2626",
     icon: "briefcase",
     goalHours: 8,
     monthlyGoalHours: 160,
     goalPeriod: "daily",
     subcategories: [
-      { name: "Lamb co.TimberWild", goalMinutes: 960, goalType: "time" },
-      { name: "Partnership", goalMinutes: 480, goalType: "time" },
-      { name: "Networking", goalMinutes: 240, goalType: "time" },
-      { name: "Cold Calling", goalMinutes: 120, goalType: "time" },
+      { name: "Lamb co.TimberWild", goalMinutes: 960, goalType: "time", displayId: "W1", priority: 1 },
+      { name: "Partnership", goalMinutes: 480, goalType: "time", displayId: "W2", priority: 2 },
+      { name: "Networking", goalMinutes: 240, goalType: "time", displayId: "W3", priority: 3 },
+      { name: "Cold Calling", goalMinutes: 120, goalType: "time", displayId: "W4", priority: 4 },
     ],
   },
   {
     name: "Health",
+    prefix: "H",
     color: "#EC4899",
     icon: "heart",
     goalHours: 2,
     monthlyGoalHours: 60,
     goalPeriod: "daily",
     subcategories: [
-      { name: "Exercise", goalMinutes: 300, goalType: "time" },
-      { name: "Sleep", goalMinutes: 480, goalType: "time" },
-      { name: "Wake up at 5 AM", goalMinutes: 0, goalType: "binary" },
-      { name: "Workout", goalMinutes: 0, goalType: "binary" },
-      { name: "Eat Healthy", goalMinutes: 0, goalType: "binary" },
-      { name: "Drink Water", goalMinutes: 0, goalType: "binary" },
+      { name: "Exercise", goalMinutes: 300, goalType: "time", displayId: "H1", priority: 1 },
+      { name: "Sleep", goalMinutes: 480, goalType: "time", displayId: "H2", priority: 2 },
+      { name: "Wake up at 5 AM", goalMinutes: 0, goalType: "binary", displayId: "H3", priority: 3 },
+      { name: "Workout", goalMinutes: 0, goalType: "binary", displayId: "H4", priority: 4 },
+      { name: "Eat Healthy", goalMinutes: 0, goalType: "binary", displayId: "H5", priority: 5 },
+      { name: "Drink Water", goalMinutes: 0, goalType: "binary", displayId: "H6", priority: 6 },
     ],
   },
 ];

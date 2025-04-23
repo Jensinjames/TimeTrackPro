@@ -362,22 +362,29 @@ export class MemStorage implements IStorage {
   async setupDefaultCategories(userId: number): Promise<void> {
     for (let i = 0; i < defaultCategories.length; i++) {
       const cat = defaultCategories[i];
+      // Create category with UUID and prefix
       const category = await this.createCategory({
         userId,
         name: cat.name,
         color: cat.color,
         icon: cat.icon,
         goalHours: cat.goalHours,
+        uuid: uuidv4(), // Generate UUID for category
+        prefix: cat.prefix, // Use prefix from default category
+        monthlyGoalHours: cat.monthlyGoalHours || 0,
+        goalPeriod: cat.goalPeriod || "daily",
         order: i
       });
       
-      // Create subcategories
+      // Create subcategories with display IDs
       for (const sub of cat.subcategories) {
         await this.createSubcategory({
           categoryId: category.id,
           name: sub.name,
           goalMinutes: sub.goalMinutes,
-          goalType: sub.goalType
+          goalType: sub.goalType,
+          displayId: sub.displayId || `${cat.prefix}${sub.priority || 0}`, // Use provided display ID or generate one
+          priority: sub.priority || 0
         });
       }
     }
