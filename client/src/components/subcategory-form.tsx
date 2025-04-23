@@ -260,21 +260,37 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
       ? allSubcategories.filter(sub => sub.id !== subcategory.id) 
       : allSubcategories;
       
+    // Define interface for subcategory items with priority
+    interface SubcategoryWithPriority {
+      id: number;
+      name: string;
+      goalType: string;
+      goalMinutes: number;
+      priority: number;
+      categoryId?: number;
+    }
+    
     // Only process time-based subcategories
     const timeSubcategories = filteredSubcategories.filter(sub => sub.goalType === 'time');
     
+    // Convert existing subcategories to include priority
+    const timeSubcategoriesWithPriority: SubcategoryWithPriority[] = timeSubcategories.map((sub, index) => ({
+      ...sub,
+      priority: index + 1  // Assign lower priority (higher number) to existing subcategories
+    }));
+    
     // Add current subcategory with new value to the list
-    const currentSubWithNewValue = {
+    const currentSubWithNewValue: SubcategoryWithPriority = {
       id: subcategory.id || -1, // Use -1 for new
       name: subcategory.name,
       goalType: 'time',
       goalMinutes: Math.floor(hoursAsNumber * 60),
       // Higher priority = first in list (0 = highest)
-      priority: isNew ? timeSubcategories.length : 0 
+      priority: isNew ? timeSubcategoriesWithPriority.length : 0 
     };
     
     // Create final list with all subcategories
-    const allTimeSubcategories = [...timeSubcategories, currentSubWithNewValue];
+    const allTimeSubcategories: SubcategoryWithPriority[] = [...timeSubcategoriesWithPriority, currentSubWithNewValue];
     
     // Calculate total requested minutes
     const totalRequestedMinutes = allTimeSubcategories.reduce(

@@ -604,9 +604,21 @@ export class DatabaseStorage implements IStorage {
         // Calculate available minutes
         const availableMinutes = Math.max(0, categoryTotalMinutes - totalExistingMinutes);
         
-        // Check if the new subcategory's goal fits within the available minutes
+        // Add a small tolerance (0.5% of category total) to account for rounding errors
+        const toleranceMinutes = Math.max(1, Math.min(15, Math.ceil(categoryTotalMinutes * 0.005)));
+        
+        // Log the validation values
+        console.log(`CREATE VALIDATION: Category ${category.id} - Requested: ${subcategory.goalMinutes}, Available: ${availableMinutes}, Tolerance: ${toleranceMinutes}`);
+        
+        // Only throw error if it exceeds by more than the tolerance
+        if (subcategory.goalMinutes > (availableMinutes + toleranceMinutes)) {
+          throw new Error(`Subcategory goal cannot exceed ${Math.floor(availableMinutes / 60)} hours ${availableMinutes % 60} minutes (tolerance: ${toleranceMinutes} minutes)`);
+        }
+        
+        // If it's within tolerance but still over, adjust it to exactly match the max
         if (subcategory.goalMinutes > availableMinutes) {
-          throw new Error(`Subcategory goal cannot exceed ${Math.floor(availableMinutes / 60)} hours ${availableMinutes % 60} minutes`);
+          console.log(`ADJUSTING NEW: Requested ${subcategory.goalMinutes} minutes adjusted to ${availableMinutes} minutes (within tolerance)`);
+          subcategory.goalMinutes = availableMinutes;
         }
       }
       
@@ -651,9 +663,19 @@ export class DatabaseStorage implements IStorage {
           
         const maxAllowedMinutes = Math.max(0, categoryTotalMinutes - totalOtherSubcategoryMinutes);
         
-        // Check if the new value would exceed the limit
+        // Add a small tolerance (0.5% of total category goal) to account for rounding errors
+        const toleranceMinutes = Math.max(1, Math.min(15, Math.ceil(categoryTotalMinutes * 0.005)));
+        
+        // Only throw error if it exceeds by more than the tolerance
+        if (subcategory.goalMinutes > (maxAllowedMinutes + toleranceMinutes)) {
+          console.log(`VALIDATION ERROR: Requested ${subcategory.goalMinutes} minutes, Max allowed: ${maxAllowedMinutes} minutes, Tolerance: ${toleranceMinutes} minutes`);
+          throw new Error(`Subcategory goal cannot exceed ${Math.floor(maxAllowedMinutes / 60)} hours ${maxAllowedMinutes % 60} minutes (tolerance: ${toleranceMinutes} minutes)`);
+        }
+        
+        // If it's within tolerance but still over, adjust it to exactly match the max
         if (subcategory.goalMinutes > maxAllowedMinutes) {
-          throw new Error(`Subcategory goal cannot exceed ${Math.floor(maxAllowedMinutes / 60)} hours ${maxAllowedMinutes % 60} minutes`);
+          console.log(`ADJUSTING: Requested ${subcategory.goalMinutes} minutes adjusted to ${maxAllowedMinutes} minutes (within tolerance)`);
+          subcategory.goalMinutes = maxAllowedMinutes;
         }
       }
       
