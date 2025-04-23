@@ -24,6 +24,7 @@ import CategoryDetailView from "@/components/category-detail-view";
 export default function DashboardPage() {
   const [date, setDate] = useState(new Date());
   const [dailyEntryOpen, setDailyEntryOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryWithSubcategories & { actualHours: number, progress: number } | null>(null);
   const { user } = useAuth();
   const { dateRange, setDateRange } = useDateRange();
   
@@ -71,6 +72,14 @@ export default function DashboardPage() {
   
   const handleAddEntryClick = () => {
     setDailyEntryOpen(true);
+  };
+  
+  const handleViewCategoryDetails = (category: CategoryWithSubcategories & { actualHours: number, progress: number }) => {
+    setSelectedCategory(category);
+  };
+  
+  const handleCloseCategoryDetails = () => {
+    setSelectedCategory(null);
   };
 
   if (isLoading) {
@@ -240,7 +249,7 @@ export default function DashboardPage() {
             current={item.current}
             goals={item.goals}
             progress={item.progress}
-            onViewDetails={() => console.log(`View details for ${item.title}`)}
+            onViewDetails={() => handleViewCategoryDetails(item.category)}
           />
         ))}
       </div>
@@ -252,6 +261,18 @@ export default function DashboardPage() {
         selectedDate={date}
         categories={categories}
       />
+      
+      {/* Category Detail Dialog */}
+      <Dialog open={!!selectedCategory} onOpenChange={(open) => !open && handleCloseCategoryDetails()}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+          {selectedCategory && (
+            <CategoryDetailView 
+              category={selectedCategory} 
+              onBack={handleCloseCategoryDetails} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
