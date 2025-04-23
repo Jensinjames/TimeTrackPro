@@ -74,7 +74,7 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
     return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   }
   
-  // Generate pie chart data from subcategories
+  // Generate pie chart data from subcategories with actual time allocations
   function generateSubcategoryPieData() {
     if (!category.subcategories || category.subcategories.length === 0) {
       return [{ id: 'no-data', label: 'No Data', value: 1, color: '#E5E7EB' }];
@@ -91,18 +91,29 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
     
     // Generate colors
     const baseColor = category.color.startsWith('#') ? category.color : '#1E293B';
+
+    // Determine whether we have actual data or need to use goals
+    const hasActualData = timeSubcategories.some(sub => (sub as any).actualMinutes > 0);
     
     // Create pie slices for each subcategory
     return timeSubcategories.map((sub, index) => {
-      // Create slightly different shades for each subcategory
-      const hue = index * 30 % 60;
-      const shade = Math.min(100 - (index * 8), 90);
+      // Get actual time if available (from timeRecords) or default to 0
+      const actualMinutes = (sub as any).actualMinutes || 0;
+      const goalMinutes = sub.goalMinutes;
+      
+      // Use actual minutes if available, otherwise fallback to goals
+      const displayValue = hasActualData ? actualMinutes : goalMinutes;
+      const displayHours = displayValue / 60; // Convert to hours
       
       return {
         id: sub.id.toString(),
         label: sub.name,
-        value: sub.goalMinutes / 60, // Convert to hours for better visualization
-        minutes: sub.goalMinutes,
+        value: displayHours, // Use actual hours when available
+        minutes: displayValue,
+        actualMinutes: actualMinutes,
+        goalMinutes: goalMinutes,
+        // Show whether this is actual data or goal data
+        isActual: hasActualData,
         color: shadeColor(baseColor, index * 0.1)
       };
     });
