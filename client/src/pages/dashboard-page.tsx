@@ -9,10 +9,8 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { CategoryCard } from "@/components/ui/category-card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { 
-  LayoutDashboard, 
   ChevronRight, 
   ChevronLeft, 
-  Calendar, 
   Target, 
   Zap, 
   Moon, 
@@ -116,7 +114,7 @@ export default function DashboardPage() {
       'Health': '#EC407A'
     }[title] || '#1E293B';
     
-    // Example data transformation for current and goals
+    // Map data for current and goals columns
     const current = [
       { label: "Time Spent", value: formatHours(category.actualHours) },
       { label: "Progress", value: formatPercent(category.progress) },
@@ -133,20 +131,21 @@ export default function DashboardPage() {
       color,
       current,
       goals,
+      progress: category.progress,
       category, // Keep the original category for reference
     };
   });
   
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {/* Top bar with breadcrumb and title */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4 md:mb-6">
         <div className="flex items-center">
           <div className="text-sm text-gray-500 flex items-center">
             <span className="inline-block mr-2">Dashboard</span>
             <ChevronRight className="h-3 w-3" />
           </div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <h1 className="text-lg md:text-2xl font-semibold">Dashboard</h1>
         </div>
         
         <Button onClick={handleAddEntryClick} size="sm" className="flex items-center">
@@ -156,7 +155,7 @@ export default function DashboardPage() {
       </div>
       
       {/* Date Range Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+      <div className="mb-4 md:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
         <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full md:w-auto">
           {/* Date Range Picker */}
           <DateRangePicker
@@ -174,11 +173,12 @@ export default function DashboardPage() {
                 size="icon" 
                 onClick={handlePrevDay}
                 className="h-8 w-8 sm:h-9 sm:w-9"
+                aria-label="Previous day"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium whitespace-nowrap">
                 {dateStr}
               </span>
               
@@ -187,6 +187,7 @@ export default function DashboardPage() {
                 size="icon"
                 onClick={handleNextDay}
                 className="h-8 w-8 sm:h-9 sm:w-9"
+                aria-label="Next day"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -196,27 +197,31 @@ export default function DashboardPage() {
       </div>
       
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 md:mb-6">
         <KpiCard
-          icon={<Target className="h-5 w-5 text-primary-600" />}
+          icon={<Target className="h-5 w-5" />}
+          iconColor="text-primary-600"
           label="Daily Score"
           value={formatPercent(dailyScore)}
           subLabel="Overall daily performance score"
         />
         <KpiCard
-          icon={<Zap className="h-5 w-5 text-amber-500" />}
+          icon={<Zap className="h-5 w-5" />}
+          iconColor="text-amber-500"
           label="Motivation Level"
           value={formatPercent(motivationLevel)}
           subLabel="Energy and focus today"
         />
         <KpiCard
-          icon={<Moon className="h-5 w-5 text-purple-500" />}
+          icon={<Moon className="h-5 w-5" />}
+          iconColor="text-purple-500"
           label="Sleep Duration"
           value={`${sleepDuration} hrs`}
           subLabel="Last night's rest"
         />
         <KpiCard
-          icon={<Heart className="h-5 w-5 text-pink-500" />}
+          icon={<Heart className="h-5 w-5" />}
+          iconColor="text-pink-500"
           label="Health Balance"
           value={formatPercent(healthBalance)}
           subLabel="Physical activity vs rest"
@@ -232,6 +237,7 @@ export default function DashboardPage() {
             color={item.color}
             current={item.current}
             goals={item.goals}
+            progress={item.progress}
             onViewDetails={() => console.log(`View details for ${item.title}`)}
           />
         ))}
