@@ -9,6 +9,18 @@ import { formatHours, formatPercent, getCategoryIcon, categoryColors } from '@/l
 import { CategoryWithSubcategories } from '@shared/schema';
 import { ResponsivePie } from '@nivo/pie';
 
+// Define a type for subcategory pie chart data
+interface SubcategoryPieChartData {
+  id: string;
+  label: string;
+  value: number;
+  color: string;
+  minutes?: number;
+  actualMinutes?: number;
+  goalMinutes?: number;
+  isActual?: boolean;
+}
+
 interface CategoryDetailViewProps {
   category: CategoryWithSubcategories & {
     actualHours: number;
@@ -75,7 +87,7 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
   }
   
   // Generate pie chart data from subcategories with actual time allocations
-  function generateSubcategoryPieData() {
+  function generateSubcategoryPieData(): SubcategoryPieChartData[] {
     if (!category.subcategories || category.subcategories.length === 0) {
       return [{ id: 'no-data', label: 'No Data', value: 1, color: '#E5E7EB' }];
     }
@@ -298,7 +310,23 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
           <TabsContent value="time-allocation" className="px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 space-y-4 md:space-y-6">
             <div className="flex flex-col space-y-4">
               <div className="bg-gray-50 rounded-lg p-3 md:p-4">
-                <h4 className="text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">Subcategory Time Allocation</h4>
+                <div className="flex justify-between items-center mb-2 md:mb-3">
+                  <h4 className="text-xs md:text-sm font-medium text-gray-700">Subcategory Time Allocation</h4>
+                  <span 
+                    className={`text-xs rounded-full px-2 py-0.5 flex items-center ${
+                      subcategoryPieData[0]?.isActual 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}
+                  >
+                    <span 
+                      className={`w-2 h-2 rounded-full mr-1 ${
+                        subcategoryPieData[0]?.isActual ? 'bg-green-500' : 'bg-blue-500'
+                      }`}
+                    ></span>
+                    {subcategoryPieData[0]?.isActual ? 'Actual Time' : 'Goal Allocation'}
+                  </span>
+                </div>
                 
                 <div className="flex justify-center items-center mx-auto mb-3 md:mb-4">
                   <div style={{ height: 180, width: 180, maxWidth: '100%' }} className="md:h-[240px] md:w-[240px] pie-chart-container">
@@ -343,12 +371,22 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                           }
                         }
                       }}
-                      tooltip={({ datum }) => (
-                        <div className="bg-white p-2 shadow-md rounded-md text-xs md:text-sm">
-                          <div className="font-medium">{datum.data.label}</div>
-                          <div className="text-gray-500">{formatHours(datum.value)}</div>
-                        </div>
-                      )}
+                      tooltip={({ datum }) => {
+                        const data = datum.data as SubcategoryPieChartData;
+                        return (
+                          <div className="bg-white p-2 shadow-md rounded-md text-xs md:text-sm">
+                            <div className="font-medium">{data.label}</div>
+                            <div className="text-gray-500">
+                              {data.isActual ? 'Actual: ' : ''}{formatHours(data.value)}
+                            </div>
+                            {data.isActual && data.goalMinutes && (
+                              <div className="text-blue-500">
+                                Goal: {formatHours(data.goalMinutes / 60)}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }}
                     />
                   </div>
                 </div>
@@ -367,9 +405,16 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                         <span className="text-xs md:text-sm truncate">{item.label}</span>
                         <span className="hidden sm:inline text-xs text-gray-500 font-mono ml-2 whitespace-nowrap">(ID: {item.id})</span>
                       </div>
-                      <span className="text-xs md:text-sm font-medium whitespace-nowrap">
-                        {formatHours(item.value)}
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs md:text-sm font-medium whitespace-nowrap">
+                          {formatHours(item.value)}
+                        </span>
+                        {item.isActual && item.goalMinutes && item.goalMinutes > 0 && (
+                          <span className="text-xs text-gray-500 whitespace-nowrap">
+                            Goal: {formatHours((item.goalMinutes) / 60)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
