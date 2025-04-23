@@ -284,16 +284,16 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
             </div>
           </TabsContent>
           
-          <TabsContent value="time-allocation" className="px-6 pt-4 pb-6 space-y-6">
+          <TabsContent value="time-allocation" className="px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 space-y-4 md:space-y-6">
             <div className="flex flex-col space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Subcategory Time Allocation</h4>
+              <div className="bg-gray-50 rounded-lg p-3 md:p-4">
+                <h4 className="text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">Subcategory Time Allocation</h4>
                 
-                <div className="flex justify-center items-center mx-auto mb-4">
-                  <div style={{ height: 240, width: 240 }}>
+                <div className="flex justify-center items-center mx-auto mb-3 md:mb-4">
+                  <div style={{ height: 180, width: 180, maxWidth: '100%' }} className="md:h-[240px] md:w-[240px]">
                     <ResponsivePie
                       data={subcategoryPieData}
-                      margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                      margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
                       innerRadius={0.5}
                       padAngle={0.7}
                       cornerRadius={3}
@@ -304,13 +304,13 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                       enableArcLabels={true}
                       arcLabel={(d) => `${d.data.label}`}
                       arcLabelsTextColor="#ffffff"
-                      arcLabelsSkipAngle={10}
+                      arcLabelsSkipAngle={15}
                       arcLabelsRadiusOffset={0.6}
                       enableArcLinkLabels={false}
                       theme={{
                         labels: {
                           text: {
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: 'bold',
                           }
                         },
@@ -323,7 +323,7 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                         }
                       }}
                       tooltip={({ datum }) => (
-                        <div className="bg-white p-2 shadow-md rounded-md text-sm">
+                        <div className="bg-white p-2 shadow-md rounded-md text-xs md:text-sm">
                           <div className="font-medium">{datum.data.label}</div>
                           <div className="text-gray-500">{formatHours(datum.value)}</div>
                         </div>
@@ -332,21 +332,21 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 gap-2 mt-4">
+                <div className="grid grid-cols-1 gap-2 mt-3 md:mt-4">
                   {subcategoryPieData.map((item) => (
                     <div 
                       key={item.id} 
                       className="flex items-center justify-between bg-white p-2 rounded-md border border-gray-100"
                     >
-                      <div className="flex items-center">
+                      <div className="flex items-center min-w-0 pr-2">
                         <div 
-                          className="w-3 h-3 rounded-full mr-2"
+                          className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
                           style={{ backgroundColor: item.color }}
                         />
-                        <span className="text-sm">{item.label}</span>
-                        <span className="text-xs text-gray-500 font-mono ml-2">(ID: {item.id})</span>
+                        <span className="text-xs md:text-sm truncate">{item.label}</span>
+                        <span className="hidden sm:inline text-xs text-gray-500 font-mono ml-2 whitespace-nowrap">(ID: {item.id})</span>
                       </div>
-                      <span className="text-sm font-medium">
+                      <span className="text-xs md:text-sm font-medium whitespace-nowrap">
                         {formatHours(item.value)}
                       </span>
                     </div>
@@ -354,24 +354,24 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                 </div>
               </div>
               
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Time Analysis</h4>
+              <div className="bg-gray-50 rounded-lg p-3 md:p-4">
+                <h4 className="text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">Time Analysis</h4>
                 
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Category Allocation</span>
                     <span className="font-medium">{formatHours(dailyGoal)}</span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Current Usage</span>
                     <span className="font-medium">{formatHours(category.actualHours)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Available Hours (adjusted)</span>
                     <span className="font-medium">{formatHours(availableDailyHoursLeft)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Efficiency Score</span>
                     <span className="font-medium">
                       {formatPercent(Math.min(100, (category.actualHours / dailyGoal) * 100))}
@@ -382,18 +382,18 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
             </div>
           </TabsContent>
           
-          <TabsContent value="goals" className="px-6 pt-4 pb-6 space-y-6">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Goal Configuration</h4>
+          <TabsContent value="goals" className="px-3 md:px-6 pt-3 md:pt-4 pb-4 md:pb-6 space-y-4 md:space-y-6">
+            <div className="bg-gray-50 rounded-lg p-3 md:p-4">
+              <h4 className="text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">Goal Configuration</h4>
               
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 <div>
-                  <div className="text-sm mb-1 font-medium">Daily Goal Setting</div>
-                  <div className="flex justify-between text-sm">
+                  <div className="text-xs md:text-sm mb-1 font-medium">Daily Goal Setting</div>
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Daily Target</span>
                     <span className="font-medium">{formatHours(dailyGoal)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">% of Awake Time</span>
                     <span className="font-medium">
                       {Math.round((dailyGoal / maxAvailableHours) * 100)}%
@@ -402,12 +402,12 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                 </div>
                 
                 <div>
-                  <div className="text-sm mb-1 font-medium">Monthly Projection</div>
-                  <div className="flex justify-between text-sm">
+                  <div className="text-xs md:text-sm mb-1 font-medium">Monthly Projection</div>
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Monthly Target</span>
                     <span className="font-medium">{formatHours(monthlyGoal)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Current Pace</span>
                     <span className="font-medium">
                       {formatHours(category.actualHours * 30)}
@@ -416,12 +416,12 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                 </div>
                 
                 <div>
-                  <div className="text-sm mb-1 font-medium">Goal Period</div>
-                  <div className="flex justify-between text-sm">
+                  <div className="text-xs md:text-sm mb-1 font-medium">Goal Period</div>
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Tracking Mode</span>
                     <span className="font-medium capitalize">{category.goalPeriod || 'Daily'}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs md:text-sm">
                     <span className="text-gray-500">Days in Current Month</span>
                     <span className="font-medium">{getDaysInCurrentMonth()}</span>
                   </div>
@@ -429,13 +429,13 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
               </div>
             </div>
             
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Goal Progress</h4>
+            <div className="bg-gray-50 rounded-lg p-3 md:p-4">
+              <h4 className="text-xs md:text-sm font-medium text-gray-700 mb-2 md:mb-3">Goal Progress</h4>
               
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 <div>
                   <div className="flex justify-between items-baseline mb-2">
-                    <div className="text-sm">Daily Progress</div>
+                    <div className="text-xs md:text-sm">Daily Progress</div>
                     <span className="text-xs text-gray-500">
                       {formatHours(category.actualHours)} / {formatHours(dailyGoal)}
                     </span>
@@ -445,7 +445,7 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                 
                 <div>
                   <div className="flex justify-between items-baseline mb-2">
-                    <div className="text-sm">Monthly Progress</div>
+                    <div className="text-xs md:text-sm">Monthly Progress</div>
                     <span className="text-xs text-gray-500">
                       {formatHours(category.actualHours * getDaysInCurrentMonth())} / {formatHours(monthlyGoal)}
                     </span>

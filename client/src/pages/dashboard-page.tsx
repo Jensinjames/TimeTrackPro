@@ -266,7 +266,7 @@ export default function DashboardPage() {
       
       {/* Category Detail Dialog */}
       <Dialog open={!!selectedCategory} onOpenChange={(open) => !open && handleCloseCategoryDetails()}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+        <DialogContent className="max-w-[95vw] w-full md:max-w-4xl p-0 overflow-hidden max-h-[90vh] overflow-y-auto no-scrollbar">
           {selectedCategory && (
             <CategoryDetailView 
               category={selectedCategory} 
