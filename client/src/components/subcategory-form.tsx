@@ -1,6 +1,6 @@
 import { useState, memo } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,12 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   
   // Local state for subcategory form
   const [subcategory, setSubcategory] = useState<SubcategoryFormData>(initialSubcategory);
+  
+  // Get the parent category to properly index and relate subcategory changes
+  const { data: parentCategory } = useQuery({
+    queryKey: [`/api/categories/${initialSubcategory.categoryId}`],
+    enabled: !!initialSubcategory.categoryId
+  });
   
   // Debounce changes to reduce renders
   const debouncedSubcategory = useDebounce<SubcategoryFormData>(subcategory, 100);
@@ -167,14 +173,38 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
     const hoursAsNumber = typeof goalHoursValue === 'string' 
       ? parseFloat(goalHoursValue) 
       : goalHoursValue;
+    
+    // Get the maximum allowed goal hours
+    const maxAllowedHours = calculateMaxAllowedHours();
+    
+    // Check if the subcategory goal exceeds the max allowed
+    let finalHours = hoursAsNumber;
+    let showWarning = false;
+    
+    if (debouncedSubcategory.goalType === 'time' && hoursAsNumber > maxAllowedHours) {
+      // Adjust to max allowed hours
+      finalHours = maxAllowedHours;
+      showWarning = true;
+    }
       
     const payload = {
       ...debouncedSubcategory,
+      // Use the adjusted hours if needed
+      goalHours: finalHours,
       // Convert hours to minutes for the API
       goalMinutes: debouncedSubcategory.goalType === 'time' 
-        ? Math.round(hoursAsNumber * 60) 
+        ? Math.round(finalHours * 60) 
         : 0
     };
+    
+    // Show warning about adjusted goal if needed
+    if (showWarning) {
+      toast({
+        title: "Goal adjusted",
+        description: `Goal has been adjusted to ${finalHours} hours to fit within the parent category's limit.`,
+        variant: "warning",
+      });
+    }
     
     if (isNew) {
       createSubcategoryMutation.mutate(payload);
@@ -189,6 +219,31 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   
   // Determine if the form is submitting
   const isSubmitting = createSubcategoryMutation.isPending || updateSubcategoryMutation.isPending;
+  
+  // Calculate maximum allowed goal based on parent category
+  const calculateMaxAllowedHours = () => {
+    if (!parentCategory) return 10; // Default fallback
+    
+    // Get the category's goal hours
+    const categoryGoalHours = parentCategory.goalHours || 0;
+    
+    // If this is an update, we need to check other subcategories
+    if (!isNew && parentCategory.subcategories) {
+      // Calculate total hours allocated to other subcategories
+      const totalOtherSubcategoryMinutes = parentCategory.subcategories
+        .filter(sub => sub.id !== subcategory.id && sub.goalType === 'time')
+        .reduce((total, sub) => total + sub.goalMinutes, 0);
+      
+      // Convert to hours
+      const totalOtherSubcategoryHours = totalOtherSubcategoryMinutes / 60;
+      
+      // Return available hours
+      return Math.max(0, categoryGoalHours - totalOtherSubcategoryHours);
+    }
+    
+    // For new subcategories, return the category goal hours
+    return categoryGoalHours;
+  };
 
   return (
     <div className="space-y-4 p-4 border border-gray-200 rounded-md bg-gray-50">

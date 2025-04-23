@@ -382,7 +382,7 @@ export default function DailyEntryForm({
                               <div key={sub.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                                 <label className="text-sm font-medium truncate">{sub.name}</label>
                                 <Select
-                                  defaultValue={timeRecords[sub.id]?.toString() || "0"}
+                                  defaultValue={timeRecords[sub.id]?.toString() || "0.25"}
                                   onValueChange={(value) => handleTimeChange(sub.id, value)}
                                 >
                                   <SelectTrigger className="w-full sm:w-[110px] md:w-[140px]">

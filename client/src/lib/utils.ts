@@ -272,7 +272,6 @@ export const hourOptions = [
  * Time increments for time tracking
  */
 export const timeOptions = [
-  { value: "0", label: "0 hours" },
   { value: "0.25", label: "15 minutes" },
   { value: "0.5", label: "30 minutes" },
   { value: "0.75", label: "45 minutes" },
