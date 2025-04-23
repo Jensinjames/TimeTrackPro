@@ -173,74 +173,92 @@ function CategoryForm({
 
   return (
     <div className="space-y-4 p-4 border border-gray-200 rounded-md bg-gray-50">
+      {/* Category ID indicator for debugging and identification */}
+      {category.id && (
+        <div className="flex justify-between items-center mb-2 text-xs text-gray-500">
+          <div>Category ID: <span className="font-mono">{category.id}</span></div>
+          <div>Last updated: {new Date().toLocaleTimeString()}</div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label>Name</Label>
+          <Label>
+            Name
+            <span className="text-red-500 ml-1">*</span>
+          </Label>
           <Input 
             value={category.name} 
             onChange={(e) => handleInputChange('name', e.target.value)}
             placeholder="Category name"
+            className="bg-white"
+            data-category-id={category.id}
           />
         </div>
         
         <div>
-          <Label>Icon</Label>
+          <Label>
+            Icon
+            <span className="text-red-500 ml-1">*</span>
+          </Label>
           <Select
             value={category.icon}
             onValueChange={(value) => handleInputChange('icon', value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-white">
               <SelectValue placeholder="Select icon" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="pray">
-                <div className="flex items-center">
-                  <i className="fas fa-pray mr-2"></i>
-                  <span>Pray</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="sun">
-                <div className="flex items-center">
-                  <i className="fas fa-sun mr-2"></i>
-                  <span>Sun</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="briefcase">
-                <div className="flex items-center">
-                  <i className="fas fa-briefcase mr-2"></i>
-                  <span>Work</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="dumbbell">
-                <div className="flex items-center">
-                  <i className="fas fa-dumbbell mr-2"></i>
-                  <span>Fitness</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="book">
-                <div className="flex items-center">
-                  <i className="fas fa-book mr-2"></i>
-                  <span>Book</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="graduation-cap">
-                <div className="flex items-center">
-                  <i className="fas fa-graduation-cap mr-2"></i>
-                  <span>Education</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="users">
-                <div className="flex items-center">
-                  <i className="fas fa-users mr-2"></i>
-                  <span>Social</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="heart">
-                <div className="flex items-center">
-                  <i className="fas fa-heart mr-2"></i>
-                  <span>Heart</span>
-                </div>
-              </SelectItem>
+              <div className="grid grid-cols-2 gap-1">
+                <SelectItem value="pray">
+                  <div className="flex items-center">
+                    <i className="fas fa-pray mr-2"></i>
+                    <span>Pray</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="sun">
+                  <div className="flex items-center">
+                    <i className="fas fa-sun mr-2"></i>
+                    <span>Sun</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="briefcase">
+                  <div className="flex items-center">
+                    <i className="fas fa-briefcase mr-2"></i>
+                    <span>Work</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="dumbbell">
+                  <div className="flex items-center">
+                    <i className="fas fa-dumbbell mr-2"></i>
+                    <span>Fitness</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="book">
+                  <div className="flex items-center">
+                    <i className="fas fa-book mr-2"></i>
+                    <span>Book</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="graduation-cap">
+                  <div className="flex items-center">
+                    <i className="fas fa-graduation-cap mr-2"></i>
+                    <span>Education</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="users">
+                  <div className="flex items-center">
+                    <i className="fas fa-users mr-2"></i>
+                    <span>Social</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="heart">
+                  <div className="flex items-center">
+                    <i className="fas fa-heart mr-2"></i>
+                    <span>Heart</span>
+                  </div>
+                </SelectItem>
+              </div>
             </SelectContent>
           </Select>
         </div>
@@ -248,61 +266,94 @@ function CategoryForm({
       
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label>Goal (hours)</Label>
+          <Label>
+            Goal (hours)
+            <span className="text-red-500 ml-1">*</span>
+            <span className="text-xs text-gray-500 ml-2">Time Allocation</span>
+          </Label>
           <Select
             value={category.goalHours.toString()}
             onValueChange={(value) => handleInputChange('goalHours', parseFloat(value))}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-white">
               <SelectValue placeholder="Select hours" />
             </SelectTrigger>
             <SelectContent>
-              {hourOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              <div className="grid grid-cols-2 gap-1">
+                {hourOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </div>
             </SelectContent>
           </Select>
         </div>
         
         <div>
-          <Label>Goal Period</Label>
+          <Label>
+            Goal Period
+            <span className="text-red-500 ml-1">*</span>
+            <span className="text-xs text-gray-500 ml-2">Tracking Interval</span>
+          </Label>
           <Select
             value={category.goalPeriod || "daily"}
             onValueChange={(value) => handleInputChange('goalPeriod', value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-white">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="monthly">Monthly (Averaged)</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
       
       <div>
-        <Label>Color</Label>
-        <Input 
-          type="color"
-          value={category.color} 
-          onChange={(e) => handleInputChange('color', e.target.value)}
-          className="h-10"
-        />
+        <Label>
+          Color
+          <span className="text-red-500 ml-1">*</span>
+          <span className="text-xs text-gray-500 ml-2">Visual Identifier</span>
+        </Label>
+        <div className="flex items-center space-x-2">
+          <Input 
+            type="color"
+            value={category.color} 
+            onChange={(e) => handleInputChange('color', e.target.value)}
+            className="h-10 w-24"
+          />
+          <div 
+            className="h-8 w-8 rounded-full border border-gray-200" 
+            style={{ backgroundColor: category.color }}
+          ></div>
+          <div className="text-xs font-mono">{category.color}</div>
+        </div>
       </div>
       
-      <div className="flex justify-end space-x-2 pt-2">
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleSubmit}
-          disabled={isSubmitting || !isValid}
-        >
-          {isSubmitting ? "Saving..." : isNew ? "Create" : "Update"}
-        </Button>
+      <div className="flex justify-between pt-4 border-t border-gray-200 mt-4">
+        <div className="text-xs text-gray-500">
+          {isNew ? 'Creating new category' : `Editing category: ${category.name}`}
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={onClose} size="sm">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={isSubmitting || !isValid}
+            size="sm"
+          >
+            {isSubmitting ? 
+              <span className="flex items-center">
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                Saving...
+              </span> : 
+              isNew ? "Create" : "Update"
+            }
+          </Button>
+        </div>
       </div>
     </div>
   );
