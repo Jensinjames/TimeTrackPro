@@ -305,16 +305,16 @@ export default function DailyEntryForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={isMobile ? "w-full max-w-full h-[95vh] max-h-full overflow-y-auto pb-24" : "sm:max-w-[650px]"}>
-        <DialogHeader>
-          <DialogTitle>{isEditMode ? "Edit" : "Add"} Daily Entry</DialogTitle>
-          <p className="text-sm text-gray-500">
+      <DialogContent className={isMobile ? "w-full max-w-full h-[95vh] max-h-full overflow-y-auto pb-24" : "w-[95vw] max-w-[650px] max-h-[85vh] overflow-y-auto"}>
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-xl sm:text-2xl">{isEditMode ? "Edit" : "Add"} Daily Entry</DialogTitle>
+          <p className="text-sm text-gray-500 mt-1">
             Date: {format(selectedDate, "EEEE, MMMM d, yyyy")}
           </p>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-2 px-1">
             
             {/* Unified form layout without tabs */}
             <div className="space-y-6">
@@ -375,17 +375,17 @@ export default function DailyEntryForm({
                     {hasTimeItems && (
                       <>
                         <h4 className="text-xs font-medium mb-2 text-gray-600 pl-10">Time Tracking</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4 md:pl-10 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-4 md:pl-10 mb-4">
                           {category.subcategories
                             .filter(sub => !sub.goalType || sub.goalType === "time")
                             .map(sub => (
-                              <div key={sub.id} className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                                <label className="text-sm font-medium">{sub.name}</label>
+                              <div key={sub.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                                <label className="text-sm font-medium truncate">{sub.name}</label>
                                 <Select
                                   defaultValue={timeRecords[sub.id]?.toString() || "0"}
                                   onValueChange={(value) => handleTimeChange(sub.id, value)}
                                 >
-                                  <SelectTrigger className="w-full md:w-[140px]">
+                                  <SelectTrigger className="w-full sm:w-[110px] md:w-[140px]">
                                     <SelectValue placeholder="Select time" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -407,7 +407,7 @@ export default function DailyEntryForm({
                     {hasHabitItems && (
                       <>
                         <h4 className="text-xs font-medium mb-2 text-gray-600 pl-10">Habits & Tasks</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4 md:pl-10">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-4 md:pl-10">
                           {category.subcategories
                             .filter(sub => sub.goalType === "habit" || sub.goalType === "boolean")
                             .map(sub => (
@@ -422,7 +422,7 @@ export default function DailyEntryForm({
                                 />
                                 <label 
                                   htmlFor={`habit-${sub.id}`}
-                                  className="text-sm font-medium cursor-pointer"
+                                  className="text-sm font-medium cursor-pointer truncate"
                                 >
                                   {sub.name}
                                 </label>
