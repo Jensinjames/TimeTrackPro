@@ -116,20 +116,31 @@ export default function DailyEntryForm({
       return entry;
     },
     onSuccess: () => {
-      // Force complete refresh of all related data
-      queryClient.invalidateQueries();
-      
-      // Close form and show success toast
-      onOpenChange(false);
-      toast({
-        title: "Entry created",
-        description: "Your daily entry has been saved successfully!",
+      // Force complete refresh of all related data with specific keys
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/dashboard'],
+        refetchType: 'all' 
       });
       
-      // Reset form and records
-      form.reset();
-      setTimeRecords({});
-      setHabitRecords({});
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/entries'],
+        refetchType: 'all'
+      });
+      
+      // Delay closing to ensure UI updates are processed
+      setTimeout(() => {
+        // Close form and show success toast
+        onOpenChange(false);
+        toast({
+          title: "Entry created",
+          description: "Your daily entry has been saved successfully!",
+        });
+        
+        // Reset form and records
+        form.reset();
+        setTimeRecords({});
+        setHabitRecords({});
+      }, 100);
     },
     onError: (error: Error) => {
       toast({
@@ -178,15 +189,26 @@ export default function DailyEntryForm({
       return entry;
     },
     onSuccess: () => {
-      // Force complete refresh of all related data
-      queryClient.invalidateQueries();
-      
-      // Close form and show success toast
-      onOpenChange(false);
-      toast({
-        title: "Entry updated",
-        description: "Your daily entry has been updated successfully!",
+      // Force complete refresh of all related data with specific keys
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/dashboard'],
+        refetchType: 'all' 
       });
+      
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/entries'],
+        refetchType: 'all'
+      });
+      
+      // Delay closing to ensure UI updates are processed
+      setTimeout(() => {
+        // Close form and show success toast
+        onOpenChange(false);
+        toast({
+          title: "Entry updated",
+          description: "Your daily entry has been updated successfully!",
+        });
+      }, 100);
     },
     onError: (error: Error) => {
       toast({
@@ -260,11 +282,22 @@ export default function DailyEntryForm({
         dailyEntry = await createDailyEntryMutation.mutateAsync(payload);
       }
       
-      // Force a complete refresh of all data
-      queryClient.invalidateQueries();
+      // Force a complete refresh of specific data for improved performance
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/dashboard'],
+        refetchType: 'all' 
+      });
       
-      // Close the form
-      onOpenChange(false);
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/entries'],
+        refetchType: 'all'
+      });
+      
+      // Use setTimeout to ensure UI updates are processed
+      setTimeout(() => {
+        // Close the form
+        onOpenChange(false);
+      }, 100);
     } catch (error) {
       console.error("Failed to save daily entry:", error);
     }
@@ -272,16 +305,16 @@ export default function DailyEntryForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={isMobile ? "w-full max-w-full h-full max-h-full" : "sm:max-w-[650px]"}>
+      <DialogContent className={isMobile ? "w-full max-w-full h-[95vh] max-h-full overflow-y-auto pb-24" : "sm:max-w-[650px]"}>
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit" : "Add"} Daily Entry</DialogTitle>
+          <p className="text-sm text-gray-500">
+            Date: {format(selectedDate, "EEEE, MMMM d, yyyy")}
+          </p>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="text-sm text-gray-500 mb-4">
-              Date: {format(selectedDate, "EEEE, MMMM d, yyyy")}
-            </div>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
             
             {/* Unified form layout without tabs */}
             <div className="space-y-6">
@@ -342,17 +375,17 @@ export default function DailyEntryForm({
                     {hasTimeItems && (
                       <>
                         <h4 className="text-xs font-medium mb-2 text-gray-600 pl-10">Time Tracking</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-10 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4 md:pl-10 mb-4">
                           {category.subcategories
                             .filter(sub => !sub.goalType || sub.goalType === "time")
                             .map(sub => (
-                              <div key={sub.id} className="flex justify-between items-center">
-                                <label className="text-sm">{sub.name}</label>
+                              <div key={sub.id} className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                                <label className="text-sm font-medium">{sub.name}</label>
                                 <Select
                                   defaultValue={timeRecords[sub.id]?.toString() || "0"}
                                   onValueChange={(value) => handleTimeChange(sub.id, value)}
                                 >
-                                  <SelectTrigger className="w-[140px]">
+                                  <SelectTrigger className="w-full md:w-[140px]">
                                     <SelectValue placeholder="Select time" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -374,21 +407,22 @@ export default function DailyEntryForm({
                     {hasHabitItems && (
                       <>
                         <h4 className="text-xs font-medium mb-2 text-gray-600 pl-10">Habits & Tasks</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4 md:pl-10">
                           {category.subcategories
                             .filter(sub => sub.goalType === "habit" || sub.goalType === "boolean")
                             .map(sub => (
-                              <div key={sub.id} className="flex items-center space-x-2">
+                              <div key={sub.id} className="flex items-center space-x-2 py-1">
                                 <Checkbox
                                   id={`habit-${sub.id}`}
                                   checked={habitRecords[sub.id] || false}
                                   onCheckedChange={(checked) => 
                                     handleHabitChange(sub.id, checked === true)
                                   }
+                                  className="h-5 w-5" 
                                 />
                                 <label 
                                   htmlFor={`habit-${sub.id}`}
-                                  className="text-sm cursor-pointer"
+                                  className="text-sm font-medium cursor-pointer"
                                 >
                                   {sub.name}
                                 </label>
