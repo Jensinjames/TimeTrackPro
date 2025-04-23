@@ -217,14 +217,15 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
     }));
   };
   
-  // Handle form submission
+  // Handle form submission with enhanced validation
   const handleSubmit = () => {
+    // Get target hours value
     const goalHoursValue = debouncedSubcategory.goalHours || 0;
     const hoursAsNumber = typeof goalHoursValue === 'string' 
       ? parseFloat(goalHoursValue) 
       : goalHoursValue;
     
-    // Get the maximum allowed goal hours
+    // Get the maximum allowed goal hours with buffer for validation
     const maxAllowedHours = calculateMaxAllowedHours();
     
     // Check if the subcategory goal exceeds the max allowed
@@ -232,18 +233,28 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
     let showWarning = false;
     
     if (debouncedSubcategory.goalType === 'time' && hoursAsNumber > maxAllowedHours) {
+      console.log(`VALIDATION: Adjusting time from ${hoursAsNumber} to ${maxAllowedHours} hours`);
       // Adjust to max allowed hours
       finalHours = maxAllowedHours;
       showWarning = true;
+    }
+    
+    // Always round down to the nearest minute to avoid floating point issues
+    const minutesValue = Math.floor(finalHours * 60);
+    
+    // Log the calculation for debugging
+    if (parentCategory) {
+      console.log(`VALIDATION: Category ${parentCategory.name} (ID: ${parentCategory.id})`);
+      console.log(`VALIDATION: Submitting time: ${finalHours} hours = ${minutesValue} minutes`);
     }
       
     const payload = {
       ...debouncedSubcategory,
       // Use the adjusted hours if needed
       goalHours: finalHours,
-      // Convert hours to minutes for the API
+      // Convert hours to minutes for the API with safety rounding
       goalMinutes: debouncedSubcategory.goalType === 'time' 
-        ? Math.round(finalHours * 60) 
+        ? minutesValue
         : 0
     };
     
@@ -251,9 +262,46 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
     if (showWarning) {
       toast({
         title: "Goal adjusted",
-        description: `Goal has been adjusted to ${finalHours} hours to fit within the parent category's limit.`,
+        description: `Goal has been automatically adjusted to ${finalHours.toFixed(2)} hours to fit within the parent category's allocation limit.`,
         variant: "destructive",
       });
+    }
+    
+    // Add extra validation layer for time-based subcategories
+    if (debouncedSubcategory.goalType === 'time' && parentCategory) {
+      // Calculate total goal minutes for category
+      const categoryGoalMinutes = parentCategory.goalPeriod === 'monthly' && parentCategory.monthlyGoalHours
+        ? parentCategory.monthlyGoalHours * 60
+        : parentCategory.goalHours * 60;
+      
+      // Find all other time-based subcategories
+      const otherSubcategories = parentCategory.subcategories?.filter(sub => 
+        (!isNew && sub.id !== subcategory.id) && sub.goalType === 'time'
+      ) || [];
+      
+      // Calculate total minutes already allocated
+      const totalAllocatedMinutes = otherSubcategories.reduce(
+        (total, sub) => total + (sub.goalMinutes || 0), 
+        0
+      );
+      
+      // Check if adding this goal would exceed category total
+      const willExceedTotal = (totalAllocatedMinutes + minutesValue) > categoryGoalMinutes;
+      
+      if (willExceedTotal) {
+        const remaining = Math.max(0, categoryGoalMinutes - totalAllocatedMinutes);
+        const remainingHours = (remaining / 60).toFixed(1);
+        
+        toast({
+          title: "Category limit reached",
+          description: `You can allocate max ${remainingHours} more hours to this category. Adjusting to fit limit.`,
+          variant: "destructive",
+        });
+        
+        // Update payload with the maximum available
+        payload.goalHours = remaining / 60;
+        payload.goalMinutes = remaining;
+      }
     }
     
     if (isNew) {
@@ -377,15 +425,47 @@ function SubcategoryForm({ subcategory: initialSubcategory, onClose, isNew = fal
   return (
     <div className="space-y-4 p-4 border border-gray-200 rounded-md bg-gray-50">
       {/* Subcategory ID and parent relationship for clear identification */}
-      <div className="flex justify-between items-center mb-2 text-xs text-gray-500">
-        {subcategory.id && (
-          <div>Subcategory ID: <span className="font-mono">{subcategory.id}</span></div>
-        )}
-        <div>
-          Parent Category: <span className="font-medium">{parentCategory?.name || 'Loading...'}</span>
-          <span className="font-mono ml-1">(ID: {subcategory.categoryId})</span>
+      <div className="flex flex-col gap-2 mb-3">
+        <div className="flex justify-between items-center text-xs text-gray-500">
+          {subcategory.id && (
+            <div>Subcategory ID: <span className="font-mono">{subcategory.id}</span></div>
+          )}
+          <div>
+            Parent Category: <span className="font-medium">{parentCategory?.name || 'Loading...'}</span>
+            <span className="font-mono ml-1">(ID: {subcategory.categoryId})</span>
+          </div>
+          <div>Last updated: {new Date().toLocaleTimeString()}</div>
         </div>
-        <div>Last updated: {new Date().toLocaleTimeString()}</div>
+        
+        {/* Category allocation info */}
+        {parentCategory && subcategory.goalType === 'time' && (
+          <div className="bg-blue-50 text-blue-800 px-3 py-2 rounded-md border border-blue-200 text-xs">
+            <div className="font-medium mb-1 flex justify-between items-center">
+              <span>Category Allocation Budget</span>
+              {calculateMaxAllowedHours() < 1 && (
+                <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                  Category almost full!
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between">
+                <span>Total Category Goal:</span>
+                <span className="font-medium">
+                  {parentCategory.goalPeriod === 'monthly' && parentCategory.monthlyGoalHours
+                    ? `${parentCategory.monthlyGoalHours} hours (monthly)`
+                    : `${parentCategory.goalHours} hours (daily)`}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Remaining for Allocation:</span>
+                <span className={`font-medium ${calculateMaxAllowedHours() < 1 ? 'text-red-700' : 'text-green-700'}`}>
+                  {calculateMaxAllowedHours().toFixed(2)} hours
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
