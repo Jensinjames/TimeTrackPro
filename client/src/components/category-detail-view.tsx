@@ -138,14 +138,26 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
           Back
         </Button>
         
-        <div className="flex items-center">
-          <div 
-            className={`h-6 w-6 rounded-full flex items-center justify-center mr-2`}
-            style={{ backgroundColor: category.color }}  
-          >
-            <i className={`${getCategoryIcon(category.icon)} text-white text-xs`}></i>
+        <div className="flex flex-col">
+          <div className="flex items-center">
+            <div 
+              className={`h-6 w-6 rounded-full flex items-center justify-center mr-2`}
+              style={{ backgroundColor: category.color }}  
+            >
+              <i className={`${getCategoryIcon(category.icon)} text-white text-xs`}></i>
+            </div>
+            <h3 className="text-lg font-medium">{category.name} Details</h3>
           </div>
-          <h3 className="text-lg font-medium">{category.name} Details</h3>
+          <div className="text-xs text-gray-500 ml-8 flex gap-2">
+            <span className="font-mono">ID: {category.id}</span>
+            <span>|</span>
+            <span>Period: {category.goalPeriod || 'daily'}</span>
+            <span>|</span>
+            <span>Goal: {category.goalPeriod === 'monthly' && category.monthlyGoalHours 
+              ? `${category.monthlyGoalHours}h/month` 
+              : `${category.goalHours}h/day`}
+            </span>
+          </div>
         </div>
       </CardHeader>
       
@@ -236,7 +248,10 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                       className="bg-white border border-gray-200 rounded-md p-3 flex justify-between items-center"
                     >
                       <div>
-                        <span className="font-medium text-sm">{subcategory.name}</span>
+                        <div className="flex items-center">
+                          <span className="font-medium text-sm">{subcategory.name}</span>
+                          <span className="text-xs text-gray-500 font-mono ml-2">(ID: {subcategory.id})</span>
+                        </div>
                         <div className="text-xs text-gray-500">
                           {subcategory.goalType === 'time' 
                             ? `${formatHours(subcategory.goalMinutes / 60)} goal`
@@ -329,6 +344,7 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                           style={{ backgroundColor: item.color }}
                         />
                         <span className="text-sm">{item.label}</span>
+                        <span className="text-xs text-gray-500 font-mono ml-2">(ID: {item.id})</span>
                       </div>
                       <span className="text-sm font-medium">
                         {formatHours(item.value)}
