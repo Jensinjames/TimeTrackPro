@@ -5,18 +5,16 @@ import { useDateRange } from "@/hooks/use-date-range";
 import { formatHours, formatPercent } from "@/lib/utils";
 import { CategoryWithSubcategories, DashboardData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { KpiCard } from "@/components/ui/kpi-card";
-import { CategoryCard } from "@/components/ui/category-card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { ResponsivePie } from "@nivo/pie";
 import { 
   ChevronRight, 
-  ChevronLeft, 
-  Target, 
-  Zap, 
-  Moon, 
-  Heart, 
-  Plus 
+  ChevronLeft,
+  Plus, 
+  Check,
+  ExternalLink
 } from "lucide-react";
 import DailyEntryForm from "@/components/daily-entry-form";
 import CategoryDetailView from "@/components/category-detail-view";
@@ -108,65 +106,503 @@ export default function DashboardPage() {
     categories = [] 
   } = dashboardData;
   
-  const dateStr = date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
+  const dateRangeStr = dateRange?.from && dateRange?.to
+    ? `${dateRange.from.toLocaleDateString()} - ${dateRange.to.toLocaleDateString()}`
+    : date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
   
-  // Transform the categories data to match the CategoryCard component props
-  const categoryData = categories.map(category => {
-    // Assuming the categories come from DB so we need to map them to our required format
-    const title = category.name as 'Faith' | 'Life' | 'Work' | 'Health';
-    const color = {
-      'Faith': '#119447',
-      'Life': '#C48A00',
-      'Work': '#D63031',
-      'Health': '#EC407A'
-    }[title] || '#1E293B';
-    
-    // Map data for current and goals columns
-    const current = [
-      { label: "Time Spent", value: formatHours(category.actualHours) },
-      { label: "Progress", value: formatPercent(category.progress) },
+  // Get category data
+  const faithCategory = categories.find(cat => cat.name === 'Faith');
+  const lifeCategory = categories.find(cat => cat.name === 'Life');
+  const workCategory = categories.find(cat => cat.name === 'Work');
+  const healthCategory = categories.find(cat => cat.name === 'Health');
+  
+  // Create helper function to get subcategory data
+  const getSubcategoryData = (category?: CategoryWithSubcategories & { actualHours: number, progress: number }) => {
+    if (!category) return [];
+    return category.subcategories.map(sub => ({
+      name: sub.name,
+      goalMinutes: sub.goalMinutes,
+      goalType: sub.goalType,
+    }));
+  };
+  
+  // Render pie chart with progress
+  const renderProgressChart = (progress: number, color: string) => {
+    const pieData = [
+      {
+        id: "used",
+        value: progress, 
+        color: color,
+      },
+      {
+        id: "remaining",
+        value: Math.max(100 - progress, 0), 
+        color: "#E5E7EB",
+      },
     ];
     
-    const goals = [
-      { label: "Daily Goal", value: formatHours(category.goalHours) },
-      { label: "Monthly Goal", value: formatHours(category.monthlyGoalHours || category.goalHours * 30) },
-    ];
-    
-    return {
-      id: category.id,
-      title,
-      color,
-      current,
-      goals,
-      progress: category.progress,
-      category, // Keep the original category for reference
-    };
-  });
+    return (
+      <div className="relative w-20 h-20">
+        <ResponsivePie
+          data={pieData}
+          margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+          innerRadius={0.7}
+          padAngle={0.5}
+          cornerRadius={3}
+          activeOuterRadiusOffset={8}
+          colors={{ datum: 'data.color' }}
+          borderWidth={1}
+          borderColor={{ theme: 'background' }}
+          enableArcLabels={false}
+          enableArcLinkLabels={false}
+          isInteractive={false}
+        />
+        <div className="absolute inset-0 flex items-center justify-center text-sm font-medium">
+          {formatPercent(progress)}
+        </div>
+      </div>
+    );
+  };
   
+  // Render category card
+  const renderCategoryCard = (
+    name: string, 
+    color: string, 
+    icon: React.ReactNode, 
+    goalHours: number, 
+    actualHours: number, 
+    progress: number,
+    subcategories: any[]
+  ) => {
+    return (
+      <Card className="overflow-hidden">
+        <CardHeader className="p-0 bg-white">
+          <div className="flex items-center px-4 py-2" style={{ backgroundColor: color }}>
+            <span className="text-white font-medium">{name}</span>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="p-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Goal</p>
+                <p className="text-xl font-medium">{goalHours}h</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Actual</p>
+                <p className="text-xl font-medium">{formatHours(actualHours).replace('hrs', 'h')}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Progress</p>
+              <div className="flex items-center">
+                <div className="h-2 flex-grow bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full rounded-full" 
+                    style={{ backgroundColor: color, width: `${progress}%` }}
+                  ></div>
+                </div>
+                <span className="ml-2 text-sm">{formatPercent(progress)}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-200">
+            <div className="flex p-4">
+              <div className="w-1/2 border-r border-gray-200 pr-4">
+                <h4 className="text-sm font-medium text-gray-600 mb-3">Current Reality</h4>
+                <div className="space-y-2">
+                  {subcategories.slice(0, 3).map((subcat, idx) => (
+                    <div key={idx} className="flex justify-between text-sm">
+                      <span className="text-gray-600">{subcat.name}</span>
+                      {subcat.goalType === 'time' ? (
+                        <span className="font-medium">{Math.round(subcat.goalMinutes / 60)} hrs/day</span>
+                      ) : (
+                        <span className="font-medium">{subcat.completed ? 'Done' : 'Not done'}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="w-1/2 pl-4">
+                <h4 className="text-sm font-medium text-gray-600 mb-3">Goals</h4>
+                <div className="space-y-2">
+                  {subcategories.slice(0, 3).map((subcat, idx) => (
+                    <div key={idx} className="flex justify-between text-sm">
+                      <span className="text-gray-600">{subcat.name}</span>
+                      {subcat.goalType === 'time' ? (
+                        <span className="font-medium">{Math.round(subcat.goalMinutes / 60)} hrs/day</span>
+                      ) : (
+                        <span className="font-medium">Daily</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-200 p-2 flex justify-center">
+            <Button 
+              variant="ghost" 
+              className="text-blue-600 text-sm" 
+              onClick={() => faithCategory && handleViewCategoryDetails(faithCategory)}
+            >
+              View Details <ExternalLink className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+  
+  // Category detail sections
+  const renderCategoryDetailSections = (
+    category: CategoryWithSubcategories & { actualHours: number, progress: number },
+    sectionTitle: string,
+    sectionData: { name: string, minutes?: number, completed?: boolean, value?: string }[]
+  ) => {
+    return (
+      <div className="mb-5">
+        <h4 className="text-base font-medium mb-3">{sectionTitle}</h4>
+        <div className="space-y-2.5">
+          {sectionData.map((item, idx) => (
+            <div key={idx} className="flex justify-between text-sm">
+              <div className="text-gray-600">{item.name}</div>
+              <div className="font-medium">
+                {item.value || (typeof item.minutes === 'number' ? `${Math.round(item.minutes / 60)} mins` : '')}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+  
+  // New dashboard layout based on the screenshot
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {/* Top bar with breadcrumb and title */}
-      <div className="flex justify-between items-center mb-4 md:mb-6">
-        <div className="flex items-center">
-          <div className="text-sm text-gray-500 flex items-center">
-            <span className="inline-block mr-2">Dashboard</span>
-            <ChevronRight className="h-3 w-3" />
-          </div>
-          <h1 className="text-lg md:text-2xl font-semibold">Dashboard</h1>
-        </div>
+      {/* Dashboard header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-xl md:text-2xl font-semibold">Dashboard</h1>
         
-        <Button onClick={handleAddEntryClick} size="sm" className="flex items-center">
-          <Plus className="h-4 w-4 mr-1" />
-          Add Entry
-        </Button>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-500">{dateRangeStr}</span>
+          <Button onClick={handleAddEntryClick} size="sm" variant="primary">
+            <Plus className="h-4 w-4 mr-1" />
+            Add Entry
+          </Button>
+        </div>
+      </div>
+      
+      {/* Category grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+        {/* Faith */}
+        {faithCategory && (
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="flex items-center p-4 bg-white">
+                <div className="flex items-center justify-center bg-[#16A34A] w-6 h-6 rounded-sm text-white mr-2">
+                  <Check className="h-4 w-4" />
+                </div>
+                <span className="font-medium">Faith</span>
+              </div>
+              
+              <div className="grid grid-cols-3 p-4 border-t border-gray-100">
+                <div>
+                  <div className="text-xs text-gray-500">Goal</div>
+                  <div className="font-medium">{faithCategory.goalHours}h</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Actual</div>
+                  <div className="font-medium">{formatHours(faithCategory.actualHours).replace('hrs', 'h')}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Progress</div>
+                  <div className="font-medium">{formatPercent(faithCategory.progress)}</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
+                <div className="text-xs text-gray-500">Current spiritual practices and mindfulness activities</div>
+              </div>
+              
+              <div className="bg-white p-4 border-t border-gray-100">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Daily Prayer</span>
+                    <span className="font-medium">15 mins</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Daily Prayer</span>
+                    <span className="font-medium">30 mins</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Meditation</span>
+                    <span className="font-medium">10 mins</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Meditation</span>
+                    <span className="font-medium">20 mins</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Scripture Study</span>
+                    <span className="font-medium">20 mins</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Scripture Study</span>
+                    <span className="font-medium">30 mins</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="h-[140px] flex justify-center items-center border-t border-gray-100">
+                {renderProgressChart(faithCategory.progress, '#16A34A')}
+              </div>
+              
+              <div className="border-t border-gray-100 p-2 flex justify-center">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-[#16A34A] text-sm w-full" 
+                  onClick={() => handleViewCategoryDetails(faithCategory)}
+                >
+                  View Details <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Life */}
+        {lifeCategory && (
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="flex items-center p-4 bg-white">
+                <div className="flex items-center justify-center bg-[#D97706] w-6 h-6 rounded-sm text-white mr-2">
+                  <Check className="h-4 w-4" />
+                </div>
+                <span className="font-medium">Life</span>
+              </div>
+              
+              <div className="grid grid-cols-3 p-4 border-t border-gray-100">
+                <div>
+                  <div className="text-xs text-gray-500">Goal</div>
+                  <div className="font-medium">{lifeCategory.goalHours}h</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Actual</div>
+                  <div className="font-medium">{formatHours(lifeCategory.actualHours).replace('hrs', 'h')}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Progress</div>
+                  <div className="font-medium">{formatPercent(lifeCategory.progress)}</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
+                <div className="text-xs text-gray-500">Current work-life balance and relationships</div>
+              </div>
+              
+              <div className="bg-white p-4 border-t border-gray-100">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Family Time</span>
+                    <span className="font-medium">2 hrs/day</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Family Time</span>
+                    <span className="font-medium">3 hrs/day</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Social Activities</span>
+                    <span className="font-medium">4 hrs/week</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Social Activities</span>
+                    <span className="font-medium">6 hrs/week</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Hobbies</span>
+                    <span className="font-medium">3 hrs/week</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Hobbies</span>
+                    <span className="font-medium">5 hrs/week</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="h-[140px] flex justify-center items-center border-t border-gray-100">
+                {renderProgressChart(lifeCategory.progress, '#D97706')}
+              </div>
+              
+              <div className="border-t border-gray-100 p-2 flex justify-center">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-[#D97706] text-sm w-full" 
+                  onClick={() => handleViewCategoryDetails(lifeCategory)}
+                >
+                  View Details <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Work */}
+        {workCategory && (
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="flex items-center p-4 bg-white">
+                <div className="flex items-center justify-center bg-[#DC2626] w-6 h-6 rounded-sm text-white mr-2">
+                  <Check className="h-4 w-4" />
+                </div>
+                <span className="font-medium">Work</span>
+              </div>
+              
+              <div className="grid grid-cols-3 p-4 border-t border-gray-100">
+                <div>
+                  <div className="text-xs text-gray-500">Goal</div>
+                  <div className="font-medium">{workCategory.goalHours}h</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Actual</div>
+                  <div className="font-medium">{formatHours(workCategory.actualHours).replace('hrs', 'h')}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Progress</div>
+                  <div className="font-medium">{formatPercent(workCategory.progress)}</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
+                <div className="text-xs text-gray-500">Current projects and achievements</div>
+              </div>
+              
+              <div className="bg-white p-4 border-t border-gray-100">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  {workCategory.subcategories.slice(0, 3).map((subcat, idx) => (
+                    <React.Fragment key={subcat.id}>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-700">{subcat.name}</span>
+                        <span className="font-medium">{Math.round(subcat.goalMinutes / 60)} hrs/week</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-700">{subcat.name}</span>
+                        <span className="font-medium">
+                          {subcat.goalType === 'time' 
+                            ? `${Math.round(subcat.goalMinutes / 60)} hrs/week` 
+                            : 'Daily'
+                          }
+                        </span>
+                      </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="h-[140px] flex justify-center items-center border-t border-gray-100">
+                {renderProgressChart(workCategory.progress, '#DC2626')}
+              </div>
+              
+              <div className="border-t border-gray-100 p-2 flex justify-center">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-[#DC2626] text-sm w-full" 
+                  onClick={() => handleViewCategoryDetails(workCategory)}
+                >
+                  View Details <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Health */}
+        {healthCategory && (
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="flex items-center p-4 bg-white">
+                <div className="flex items-center justify-center bg-[#EC4899] w-6 h-6 rounded-sm text-white mr-2">
+                  <Check className="h-4 w-4" />
+                </div>
+                <span className="font-medium">Health</span>
+              </div>
+              
+              <div className="grid grid-cols-3 p-4 border-t border-gray-100">
+                <div>
+                  <div className="text-xs text-gray-500">Goal</div>
+                  <div className="font-medium">{healthCategory.goalHours}h</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Actual</div>
+                  <div className="font-medium">{formatHours(healthCategory.actualHours).replace('hrs', 'h')}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Progress</div>
+                  <div className="font-medium">{formatPercent(healthCategory.progress)}</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
+                <div className="text-xs text-gray-500">Current health indicators and wellness activities</div>
+              </div>
+              
+              <div className="bg-white p-4 border-t border-gray-100">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  {healthCategory.subcategories.slice(0, 3).map((subcat, idx) => (
+                    <React.Fragment key={subcat.id}>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-700">{subcat.name}</span>
+                        <span className="font-medium">
+                          {subcat.goalType === 'time' 
+                            ? `${Math.round(subcat.goalMinutes / 60)} hrs/week` 
+                            : 'Daily'
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-700">{subcat.name}</span>
+                        <span className="font-medium">
+                          {subcat.goalType === 'time' 
+                            ? `${Math.round(subcat.goalMinutes / 60)} hrs/week` 
+                            : 'Daily'
+                          }
+                        </span>
+                      </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="h-[140px] flex justify-center items-center border-t border-gray-100">
+                {renderProgressChart(healthCategory.progress, '#EC4899')}
+              </div>
+              
+              <div className="border-t border-gray-100 p-2 flex justify-center">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-[#EC4899] text-sm w-full" 
+                  onClick={() => handleViewCategoryDetails(healthCategory)}
+                >
+                  View Details <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
       
       {/* Date Range Controls */}
-      <div className="mb-4 md:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
+      <div className="hidden mb-4 md:mb-6 flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
         <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4 w-full">
           {/* Date Range Picker */}
           <div className="w-full md:w-auto">
@@ -192,7 +628,7 @@ export default function DashboardPage() {
               </Button>
               
               <span className="text-sm font-medium whitespace-nowrap min-w-[150px] text-center">
-                {dateStr}
+                {dateRangeStr}
               </span>
               
               <Button
@@ -207,53 +643,6 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      </div>
-      
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 md:mb-6">
-        <KpiCard
-          icon={<Target className="h-5 w-5" />}
-          iconColor="text-primary-600"
-          label="Daily Score"
-          value={formatPercent(dailyScore)}
-          subLabel="Overall daily performance score"
-        />
-        <KpiCard
-          icon={<Zap className="h-5 w-5" />}
-          iconColor="text-amber-500"
-          label="Motivation Level"
-          value={formatPercent(motivationLevel)}
-          subLabel="Energy and focus today"
-        />
-        <KpiCard
-          icon={<Moon className="h-5 w-5" />}
-          iconColor="text-purple-500"
-          label="Sleep Duration"
-          value={`${sleepDuration} hrs`}
-          subLabel="Last night's rest"
-        />
-        <KpiCard
-          icon={<Heart className="h-5 w-5" />}
-          iconColor="text-pink-500"
-          label="Health Balance"
-          value={formatPercent(healthBalance)}
-          subLabel="Physical activity vs rest"
-        />
-      </div>
-      
-      {/* Category Cards Stack */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr">
-        {categoryData.map(item => (
-          <CategoryCard
-            key={item.id}
-            title={item.title}
-            color={item.color}
-            current={item.current}
-            goals={item.goals}
-            progress={item.progress}
-            onViewDetails={() => handleViewCategoryDetails(item.category)}
-          />
-        ))}
       </div>
       
       {/* Daily Entry Form Dialog */}
