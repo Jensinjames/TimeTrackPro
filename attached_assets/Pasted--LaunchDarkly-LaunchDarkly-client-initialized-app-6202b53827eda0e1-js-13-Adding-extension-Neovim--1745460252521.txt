@@ -1,0 +1,31 @@
+[LaunchDarkly] LaunchDarkly client initialized
+_app-6202b53827eda0e1.js:13 Adding extension: Neovim Nightly Object
+_app-6202b53827eda0e1.js:13 Adding extension: API Request Tester Object
+_app-6202b53827eda0e1.js:13 Adding extension: GPT-Replit - ChatGPT in your Repl. Object
+hook.js:608 registerCommand: calling registerCommand with a single argument is deprecated. Pass a {commandId, contributions} object as the first command. Object
+overrideMethod @ hook.js:608Understand this warning
+hook.js:608 Command Neovim Nightly uses deprecated contributions field Object
+overrideMethod @ hook.js:608Understand this warning
+_app-6202b53827eda0e1.js:13 Adding extension: Google Cloud Auth Object
+_app-6202b53827eda0e1.js:13 Adding extension: ZIP Extractor Object
+_app-6202b53827eda0e1.js:13 Adding extension: Icon Generator Object
+_app-6202b53827eda0e1.js:13 Adding extension: AI Playground Object
+_app-6202b53827eda0e1.js:13 Adding extension: Javascript Commands Object
+hook.js:608 Command: javascript-root-command has unrecognized contributions: commandbar. Valid contributions are commandbar,filetree-context-menu,sidebar-search,editor-context-menu Object
+overrideMethod @ hook.js:608Understand this warning
+_app-6202b53827eda0e1.js:13 Adding extension: manim Object
+_app-6202b53827eda0e1.js:13 Adding extension: Neovim Nightly Object
+_app-6202b53827eda0e1.js:13 Adding extension: API Request Tester Object
+_app-6202b53827eda0e1.js:13 Adding extension: GPT-Replit - ChatGPT in your Repl. Object
+_app-6202b53827eda0e1.js:13 Adding extension: Google Cloud Auth Object
+_app-6202b53827eda0e1.js:13 Adding extension: ZIP Extractor Object
+_app-6202b53827eda0e1.js:13 Adding extension: Icon Generator Object
+_app-6202b53827eda0e1.js:13 Adding extension: AI Playground Object
+_app-6202b53827eda0e1.js:13 Adding extension: Javascript Commands Object
+_app-6202b53827eda0e1.js:13 Adding extension: manim Object
+hook.js:608 Command: javascript-root-command has unrecognized contributions: commandbar. Valid contributions are commandbar,filetree-context-menu,sidebar-search,editor-context-menu ObjectlogLevel: "warn"[[Prototype]]: Object
+overrideMethod @ hook.js:608Understand this warning
+hook.js:608 registerCommand: calling registerCommand with a single argument is deprecated. Pass a {commandId, contributions} object as the first command. ObjectlogLevel: "warn"[[Prototype]]: Object
+overrideMethod @ hook.js:608Understand this warning
+hook.js:608 Command Neovim Nightly uses deprecated contributions field Object
+overrideMethod @ hook.js:608Understand this warning

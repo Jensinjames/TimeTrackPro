@@ -47,11 +47,11 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: true, // Enable refetching on window focus to improve session persistence
-      staleTime: 60000, // Make data stale after 1 minute instead of never to improve data freshness
-      retry: 1, // Allow one retry for network issues
+      staleTime: 20000, // Make data stale after 20 seconds for more frequent refreshes
+      retry: 2, // Allow two retries for network issues
     },
     mutations: {
-      retry: 1, // Allow one retry for network issues
+      retry: 2, // Allow two retries for network issues
     },
   },
 });
