@@ -281,9 +281,44 @@ function AccountSettings() {
     newPassword: ""
   });
   
+  // Password validation states
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  
+  // Password strength checks
+  const hasMinLength = formState.newPassword.length >= 8;
+  const hasUppercase = /[A-Z]/.test(formState.newPassword);
+  const hasLowercase = /[a-z]/.test(formState.newPassword);
+  const hasNumber = /[0-9]/.test(formState.newPassword);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(formState.newPassword);
+  
+  const isPasswordValid = 
+    formState.newPassword === "" || // Empty is valid (not changing password)
+    (hasMinLength && hasUppercase && hasLowercase && hasNumber);
+  
+  const isPasswordStrong = isPasswordValid && hasSpecial;
+  
   const updateProfileMutation = useMutation({
     mutationFn: async (userData: typeof formState) => {
-      await apiRequest("PATCH", "/api/user", userData);
+      // Only send password fields if both are provided
+      if (userData.currentPassword || userData.newPassword) {
+        if (!userData.currentPassword) {
+          throw new Error("Current password is required to change password");
+        }
+        if (!userData.newPassword) {
+          throw new Error("New password is required");
+        }
+        if (!isPasswordValid) {
+          throw new Error("New password doesn't meet the requirements");
+        }
+      }
+      
+      const response = await apiRequest("PATCH", "/api/user", userData);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update profile");
+      }
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -297,8 +332,16 @@ function AccountSettings() {
         currentPassword: "",
         newPassword: ""
       }));
+      setPasswordError("");
     },
     onError: (error: Error) => {
+      // Handle common password errors
+      if (error.message.includes("Current password is incorrect")) {
+        setPasswordError("The current password you entered is incorrect");
+      } else {
+        setPasswordError("");
+      }
+      
       toast({
         title: "Failed to update profile",
         description: error.message,
@@ -313,10 +356,22 @@ function AccountSettings() {
       ...prev,
       [name]: value
     }));
+    
+    // Clear password error when user changes input
+    if (name === "currentPassword" || name === "newPassword") {
+      setPasswordError("");
+    }
   };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate password if attempting to change it
+    if (formState.newPassword && !isPasswordValid) {
+      setPasswordError("Password doesn't meet the security requirements");
+      return;
+    }
+    
     updateProfileMutation.mutate(formState);
   };
   
@@ -364,7 +419,12 @@ function AccountSettings() {
           <Separator className="my-6" />
           
           <div>
-            <Label>Change Password</Label>
+            <Label className="flex items-center justify-between">
+              <span>Change Password</span>
+              {passwordError && (
+                <span className="text-sm text-red-500">{passwordError}</span>
+              )}
+            </Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
               <div>
                 <Input 
@@ -373,7 +433,7 @@ function AccountSettings() {
                   value={formState.currentPassword}
                   onChange={handleInputChange}
                   placeholder="Current password" 
-                  className="w-full" 
+                  className={`w-full ${passwordError?.includes("current password") ? "border-red-500" : ""}`}
                 />
               </div>
               <div className={isMobile ? "mt-4 md:mt-0" : ""}>
@@ -382,11 +442,58 @@ function AccountSettings() {
                   name="newPassword"
                   value={formState.newPassword}
                   onChange={handleInputChange}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => {
+                    // Keep focused state if there's content and it's not valid
+                    if (formState.newPassword && !isPasswordValid) {
+                      return;
+                    }
+                    setPasswordFocused(false);
+                  }}
                   placeholder="New password" 
-                  className="w-full" 
+                  className={`w-full ${formState.newPassword && !isPasswordValid ? "border-red-500" : ""}`}
                 />
               </div>
             </div>
+            
+            {/* Password requirements */}
+            {(passwordFocused || formState.newPassword) && (
+              <div className="mt-3 space-y-1 text-xs">
+                <p className="font-medium">Password requirements:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1">
+                  <div className={`flex items-center ${hasMinLength ? "text-green-600" : "text-gray-500"}`}>
+                    <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${hasMinLength ? "bg-green-100" : "bg-gray-100"}`}>
+                      {hasMinLength ? "✓" : "·"}
+                    </div>
+                    At least 8 characters
+                  </div>
+                  <div className={`flex items-center ${hasUppercase ? "text-green-600" : "text-gray-500"}`}>
+                    <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${hasUppercase ? "bg-green-100" : "bg-gray-100"}`}>
+                      {hasUppercase ? "✓" : "·"}
+                    </div>
+                    Uppercase letter (A-Z)
+                  </div>
+                  <div className={`flex items-center ${hasLowercase ? "text-green-600" : "text-gray-500"}`}>
+                    <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${hasLowercase ? "bg-green-100" : "bg-gray-100"}`}>
+                      {hasLowercase ? "✓" : "·"}
+                    </div>
+                    Lowercase letter (a-z)
+                  </div>
+                  <div className={`flex items-center ${hasNumber ? "text-green-600" : "text-gray-500"}`}>
+                    <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${hasNumber ? "bg-green-100" : "bg-gray-100"}`}>
+                      {hasNumber ? "✓" : "·"}
+                    </div>
+                    Number (0-9)
+                  </div>
+                </div>
+                <div className={`flex items-center ${hasSpecial ? "text-green-600" : "text-gray-500"}`}>
+                  <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${hasSpecial ? "bg-green-100" : "bg-gray-100"}`}>
+                    {hasSpecial ? "✓" : "·"}
+                  </div>
+                  Special character (recommended)
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="pt-4">
