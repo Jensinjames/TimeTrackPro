@@ -442,6 +442,7 @@ export default function CategoryCard({
                       );
                     }}
                   />
+                  </div>
                   
                   {/* Center percentage */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center">

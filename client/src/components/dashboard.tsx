@@ -275,7 +275,7 @@ export default function Dashboard() {
           color={category.color}
           goalHours={category.goalHours}
           monthlyGoalHours={category.monthlyGoalHours}
-          goalPeriod={category.goalPeriod}
+          goalPeriod={category.goalPeriod === 'monthly' ? 'monthly' : 'daily'}
           actualHours={category.actualHours}
           progress={category.progress}
           onClick={() => handleCategoryClick(category)}
