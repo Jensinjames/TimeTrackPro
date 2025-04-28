@@ -1,11 +1,17 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { registerApiRoutes } from "./api";
+import { setupAuth } from "./auth";
+import { logger } from "./lib/logger";
+import { createServer } from "http";
 
+// Initialize Express application
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Request logger middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -30,6 +36,18 @@ app.use((req, res, next) => {
       }
 
       log(logLine);
+      
+      // Also log to our structured logger at appropriate level
+      if (res.statusCode >= 500) {
+        logger.error(`Request failed: ${req.method} ${path}`, 'api', 
+          { statusCode: res.statusCode, duration }, req.user?.id, path);
+      } else if (res.statusCode >= 400) {
+        logger.warn(`Request error: ${req.method} ${path}`, 'api', 
+          { statusCode: res.statusCode, duration }, req.user?.id, path);
+      } else {
+        logger.debug(`Request completed: ${req.method} ${path}`, 'api', 
+          { statusCode: res.statusCode, duration }, req.user?.id, path);
+      }
     }
   });
 
@@ -37,19 +55,29 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  // Create HTTP server
+  const server = createServer(app);
+  
+  // Setup authentication
+  setupAuth(app);
+  
+  // Register legacy routes for backwards compatibility
+  await registerRoutes(app);
+  
+  // Register modular API routes
+  registerApiRoutes(app);
 
+  // Global error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    logger.error(`Unhandled error: ${message}`, 'global', { status, stack: err.stack });
     res.status(status).json({ message });
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Setup Vite for development or serve static files in production
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
