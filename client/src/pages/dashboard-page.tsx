@@ -272,20 +272,98 @@ export default function DashboardPage() {
         <ResponsivePie
           data={pieData}
           margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-          innerRadius={0.6}
-          padAngle={1}
-          cornerRadius={4}
+          innerRadius={0.7}
+          padAngle={0.7}
+          cornerRadius={3}
           activeOuterRadiusOffset={8}
           colors={{ datum: 'data.color' }}
-          borderWidth={0}
+          borderWidth={1}
+          borderColor={{ from: 'color', modifiers: [['brighter', 0.2]] }}
           enableArcLabels={false}
           enableArcLinkLabels={false}
-          isInteractive={false}
+          isInteractive={true}
+          motionConfig="gentle"
+          transitionMode="startAngle"
+          defs={[
+            {
+              id: 'dots',
+              type: 'patternDots',
+              background: 'inherit',
+              color: 'rgba(255, 255, 255, 0.3)',
+              size: 4,
+              padding: 1,
+              stagger: true
+            },
+            {
+              id: 'lines',
+              type: 'patternLines',
+              background: 'inherit',
+              color: 'rgba(255, 255, 255, 0.3)',
+              rotation: -45,
+              lineWidth: 6,
+              spacing: 10
+            }
+          ]}
         />
         {centerLabel && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-3xl font-bold">{centerLabel}</div>
+            <div className="text-4xl font-bold">{centerLabel}</div>
           </div>
+        )}
+        
+        {/* Show segment percentages around the donut */}
+        {segments.length > 0 && segments.length <= 3 && (
+          <>
+            {segments.map((segment, index) => {
+              // Position percentages around the donut
+              let top, left, align;
+              
+              // For 2 items, position top and bottom
+              if (segments.length === 2) {
+                if (index === 0) {
+                  top = '28%';
+                  left = '30%';
+                  align = 'left';
+                } else {
+                  top = '60%';
+                  left = '30%';
+                  align = 'left';
+                }
+              }
+              // For 3 items, position around the chart
+              else if (segments.length === 3) {
+                if (index === 0) {
+                  top = '30%';
+                  left = '68%';
+                  align = 'right';
+                } else if (index === 1) {
+                  top = '55%';
+                  left = '68%';
+                  align = 'right';
+                } else {
+                  top = '42%';
+                  left = '30%';
+                  align = 'left';
+                }
+              } else {
+                return null;
+              }
+              
+              return (
+                <div 
+                  key={segment.name}
+                  className="absolute text-sm font-medium z-10"
+                  style={{ 
+                    top, 
+                    left, 
+                    textAlign: align as any
+                  }}
+                >
+                  {segment.value}%
+                </div>
+              );
+            })}
+          </>
         )}
       </div>
     );
@@ -356,7 +434,11 @@ export default function DashboardPage() {
   const renderCategoryCard = (category?: any) => {
     if (!category) return null;
     
-    const colors = getCategoryColors(category.name);
+    // Get color scheme from category color
+    const categoryColor = category.color.startsWith('#') ? category.color : '#16A34A';
+    const { primary, secondary, tertiary } = generateBalancedColorScheme(categoryColor);
+    
+    // Generate segments for the donut chart from subcategories
     const segments = createSegmentsFromSubcategories(category);
     
     // Show top 2 subcategories with their percentages
@@ -369,42 +451,66 @@ export default function DashboardPage() {
       return totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0;
     };
     
+    // Calculate display values
+    const actualHours = category.actualHours || 0;
+    const goalHours = category.goalHours || 0;
+    const progressPercent = category.progress || 0;
+    
     return (
       <Card className="shadow-sm overflow-hidden">
-        <CardContent className="p-5">
-          <div className="flex items-center mb-4">
-            <div 
-              className="flex items-center justify-center w-10 h-10 rounded-lg mr-3"
-              style={{ backgroundColor: colors.primary }}
-            >
-              {colors.icon}
-            </div>
-            <h3 className="text-xl font-semibold">{category.name}</h3>
-          </div>
-          
-          <div className="flex items-center justify-between">
+        {/* Category header - use primary color as background */}
+        <div className="p-3 font-bold text-white uppercase text-lg" style={{ backgroundColor: primary }}>
+          {category.name}
+        </div>
+        
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row">
+            {/* Left column - current reality and goal */}
             <div className="flex-1">
-              {topSubcategories.map((subcat: any, idx: number) => (
-                <div key={idx} className="mb-3">
-                  <div className="flex justify-between">
-                    <span>{subcat.name}</span>
-                    <span className="font-medium">
-                      {calculatePercentage(subcat)}%
-                    </span>
-                  </div>
+              <div className="mb-5">
+                <h4 className="font-semibold mb-1">Current Reality</h4>
+                <div className="text-xl font-medium">Actual: {actualHours}h</div>
+                <div className="text-sm text-gray-600">
+                  Time spent on {category.name.toLowerCase()}-related activities
                 </div>
-              ))}
+              </div>
+              
+              <div>
+                <h4 className="font-semibold mb-1">Goal</h4>
+                <div className="text-xl font-medium">Goal: {goalHours}h</div>
+                {topSubcategories.length > 0 && (
+                  <div className="text-sm text-gray-600">
+                    {topSubcategories[0]?.name}{topSubcategories.length > 1 ? ` and ${topSubcategories[1]?.name}` : ''}
+                  </div>
+                )}
+              </div>
             </div>
             
-            <div className="flex-1 flex justify-center">
+            {/* Right column - donut chart visualization */}
+            <div className="flex-1 flex justify-center pt-4 md:pt-0">
               {renderDonutChart(
-                category.progress || 0,
+                progressPercent,
                 segments,
-                170,
-                `${category.progress || 0}%`
+                200,
+                `${progressPercent}%`
               )}
             </div>
           </div>
+          
+          {/* Legend row */}
+          {segments.length > 0 && (
+            <div className="flex justify-center gap-4 mt-4">
+              {segments.map((segment, idx) => (
+                <div key={idx} className="flex items-center">
+                  <div 
+                    className="w-3 h-3 rounded-full mr-1" 
+                    style={{ backgroundColor: segment.color }}
+                  ></div>
+                  <span className="text-sm">{segment.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -424,57 +530,76 @@ export default function DashboardPage() {
   const renderWorkCard = () => {
     if (!workCategory) return null;
     
-    const colors = getCategoryColors('Work');
+    // Get color scheme from category color
+    const categoryColor = workCategory.color.startsWith('#') ? workCategory.color : '#DC2626';
+    const { primary, secondary, tertiary } = generateBalancedColorScheme(categoryColor);
     
     // Calculate actual hours vs goal hours for chart
     const currentHours = workCategory.actualHours || 0;
     const goalHours = workCategory.goalHours || 0;
     const totalHours = Math.max(currentHours, goalHours);
+    const progressPercent = workCategory.progress || 0;
     
     // Calculate percentages for the chart - scaled to 100
     const currentPercentage = totalHours > 0 ? Math.round((currentHours / totalHours) * 100) : 0;
     const goalPercentage = totalHours > 0 ? Math.round((goalHours / totalHours) * 100) : 0;
     
+    // Create segments for chart with distinct colors
+    const segments = [
+      { name: 'Current', value: currentPercentage, color: primary },
+      { name: 'Goal', value: goalPercentage, color: secondary },
+    ];
+    
     return (
       <Card className="shadow-sm overflow-hidden">
-        <CardContent className="p-5">
-          <div className="flex items-center mb-4">
-            <div 
-              className="flex items-center justify-center w-10 h-10 rounded-lg mr-3"
-              style={{ backgroundColor: colors.primary }}
-            >
-              {colors.icon}
-            </div>
-            <h3 className="text-xl font-semibold">Work</h3>
-          </div>
-          
-          <div className="flex items-center justify-between">
+        {/* Category header - use primary color as background */}
+        <div className="p-3 font-bold text-white uppercase text-lg" style={{ backgroundColor: primary }}>
+          WORK
+        </div>
+        
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row">
+            {/* Left column - current reality and goal */}
             <div className="flex-1">
-              <div className="mb-3">
-                <div className="flex justify-between">
-                  <span>Current Reality</span>
-                  <span className="font-medium">{currentHours}h</span>
+              <div className="mb-5">
+                <h4 className="font-semibold mb-1">Current Reality</h4>
+                <div className="text-xl font-medium">Actual: {currentHours}h</div>
+                <div className="text-sm text-gray-600">
+                  Time spent on work-related activities
                 </div>
               </div>
-              <div className="mb-3">
-                <div className="flex justify-between">
-                  <span>Goal</span>
-                  <span className="font-medium">{goalHours}h</span>
+              
+              <div>
+                <h4 className="font-semibold mb-1">Goal</h4>
+                <div className="text-xl font-medium">Goal: {goalHours}h</div>
+                <div className="text-sm text-gray-600">
+                  Regular work and professional tasks
                 </div>
               </div>
             </div>
             
-            <div className="flex-1 flex justify-center">
+            {/* Right column - donut chart visualization */}
+            <div className="flex-1 flex justify-center pt-4 md:pt-0">
               {renderDonutChart(
-                workCategory.progress || 0,
-                [
-                  { name: 'Current', value: currentPercentage, color: colors.primary },
-                  { name: 'Goal', value: goalPercentage, color: colors.secondary },
-                ],
-                170,
-                `${workCategory.progress || 0}%`
+                progressPercent,
+                segments,
+                200, 
+                `${progressPercent}%`
               )}
             </div>
+          </div>
+          
+          {/* Legend row */}
+          <div className="flex justify-center gap-4 mt-4">
+            {segments.map((segment, idx) => (
+              <div key={idx} className="flex items-center">
+                <div 
+                  className="w-3 h-3 rounded-full mr-1" 
+                  style={{ backgroundColor: segment.color }}
+                ></div>
+                <span className="text-sm">{segment.name}</span>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
