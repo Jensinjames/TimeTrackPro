@@ -45,7 +45,7 @@ export default function Dashboard() {
       dateRange?.from?.toISOString() || null,
       dateRange?.to?.toISOString() || date.toISOString().split('T')[0],
       // Add a timestamp to force refresh and bypass cache
-      Date.now()
+      Date.now().toString()
     ],
     queryFn: async () => {
       // Build URL with date range if available
@@ -65,7 +65,7 @@ export default function Dashboard() {
       url = `${url}?${params.toString()}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch dashboard data');
-      return res.json();
+      return res.json() as Promise<DashboardData>;
     },
     enabled: !!user,
     // Refresh data every 3 seconds when the page is visible for more responsive updates
@@ -74,8 +74,7 @@ export default function Dashboard() {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     // Force always fresh data
-    staleTime: 0,
-    gcTime: 0 // Don't cache at all, using gcTime instead of cacheTime which is deprecated
+    staleTime: 0
   });
   
   // Effect to clear single-day date when date range is active
@@ -124,7 +123,8 @@ export default function Dashboard() {
     }
   };
   
-  const handleCategoryClick = (category: any) => {
+  // Use proper type for category parameter
+  const handleCategoryClick = (category: DashboardData['categories'][0]) => {
     setSelectedCategory(category);
   };
   
