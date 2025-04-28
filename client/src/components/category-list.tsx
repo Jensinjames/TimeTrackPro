@@ -110,9 +110,11 @@ function CategoryList({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge variant={category.goalPeriod === 'monthly' ? 'secondary' : 'outline'} className="ml-2 text-xs px-1.5 py-0">
-                      {category.goalPeriod === 'monthly' ? 'Monthly' : 'Daily'}
-                    </Badge>
+                    <Button variant="ghost" className="ml-2 p-0 h-auto">
+                      <Badge variant={category.goalPeriod === 'monthly' ? 'secondary' : 'outline'} className="text-xs px-1.5 py-0">
+                        {category.goalPeriod === 'monthly' ? 'Monthly' : 'Daily'}
+                      </Badge>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{category.goalPeriod === 'monthly' ? 'Monthly' : 'Daily'} goal: {category.goalHours} hour{category.goalHours !== 1 ? 's' : ''}</p>
