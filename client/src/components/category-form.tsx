@@ -433,25 +433,45 @@ function CategoryForm({
               // Generate balanced colors based on the primary color
               const { primary, secondary, tertiary } = generateBalancedColorScheme(category.color);
               return (
-                <div className="flex space-x-2">
-                  <div 
-                    className="h-6 w-10 rounded border border-gray-200" 
-                    style={{ backgroundColor: primary }}
-                    title="Primary"
-                  ></div>
-                  <div 
-                    className="h-6 w-10 rounded border border-gray-200" 
-                    style={{ backgroundColor: secondary }}
-                    title="Secondary"
-                  ></div>
-                  <div 
-                    className="h-6 w-10 rounded border border-gray-200" 
-                    style={{ backgroundColor: tertiary }}
-                    title="Tertiary"
-                  ></div>
+                <div className="flex justify-between space-x-4">
+                  <div className="flex space-x-2">
+                    <div 
+                      className="h-6 w-10 rounded border border-gray-200" 
+                      style={{ backgroundColor: primary }}
+                      title="Primary"
+                    ></div>
+                    <div 
+                      className="h-6 w-10 rounded border border-gray-200" 
+                      style={{ backgroundColor: secondary }}
+                      title="Secondary"
+                    ></div>
+                    <div 
+                      className="h-6 w-10 rounded border border-gray-200" 
+                      style={{ backgroundColor: tertiary }}
+                      title="Tertiary"
+                    ></div>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <div className="text-xs text-gray-500 mr-2">Visual Preview:</div>
+                    <div 
+                      className="relative h-10 w-10 rounded-full" 
+                      style={{ background: `conic-gradient(${primary} 0% 50%, ${secondary} 50% 80%, ${tertiary} 80% 100%)` }}
+                    >
+                      <div 
+                        className="absolute inset-[15%] bg-white rounded-full flex items-center justify-center"
+                      >
+                        <div className="text-[8px] font-medium">30%</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               );
             })()}
+            
+            <div className="text-xs mt-2 text-gray-500">
+              * Colors are automatically balanced for optimal contrast and readability
+            </div>
           </div>
         )}
       </div>

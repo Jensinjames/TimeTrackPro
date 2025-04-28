@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useDateRange } from "@/hooks/use-date-range";
 import { formatHours, formatPercent } from "@/lib/utils";
+import { lightenColor, darkenColor, generateBalancedColorScheme, getContrastingTextColor } from "@/lib/color-utils";
 import { CategoryWithSubcategories, DashboardData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -59,8 +60,6 @@ const CATEGORY_COLORS = {
 };
 
 // Helper to get actual color from DB value
-// Import color utilities
-import { generateBalancedColorScheme, getContrastingTextColor } from "@/lib/color-utils";
 
 const getColorFromDBValue = (colorValue: string): {primary: string, secondary: string, tertiary: string, icon: JSX.Element} => {
   // If the color is a direct match to one of our category names
@@ -255,7 +254,7 @@ export default function DashboardPage() {
   // Simple pie chart with progress
   const renderDonutChart = (
     value: number, 
-    segments: { name: string, value: number, color: string }[],
+    segments: { name: string, value: number, color: string, originalData?: any }[],
     size: number = 200,
     centerLabel?: string
   ) => {
@@ -264,8 +263,43 @@ export default function DashboardPage() {
       id: segment.name,
       label: segment.name,
       value: segment.value,
-      color: segment.color
+      color: segment.color,
+      originalData: segment.originalData
     }));
+    
+    // Calculate start angles for each segment to position labels precisely
+    const calculateStartAngle = (index: number) => {
+      const total = segments.reduce((acc, s) => acc + s.value, 0);
+      const before = segments.slice(0, index).reduce((acc, s) => acc + s.value, 0);
+      return (before / total) * 360;
+    };
+    
+    // Calculate position for label based on segment angle
+    const getLabelPosition = (index: number, segmentCount: number) => {
+      // For better positioning, calculate the middle angle of this segment
+      const startAngle = calculateStartAngle(index);
+      const segmentAngle = (segments[index].value / 100) * 360;
+      const midAngle = startAngle + (segmentAngle / 2);
+      
+      // Convert angle to radians and calculate position
+      // We place labels at 75% of the radius from center for better placement
+      const radius = size * 0.38; // 38% of chart size
+      const radians = (midAngle - 90) * (Math.PI / 180);
+      
+      // Calculate base position
+      const x = Math.cos(radians) * radius;
+      const y = Math.sin(radians) * radius;
+      
+      // Add center offsets
+      const centerX = size / 2;
+      const centerY = size / 2;
+      
+      // Return percentage coordinates 
+      return {
+        left: `${((x + centerX) / size) * 100}%`,
+        top: `${((y + centerY) / size) * 100}%`
+      };
+    };
     
     return (
       <div className="relative" style={{ width: size, height: size }}>
@@ -304,59 +338,59 @@ export default function DashboardPage() {
               spacing: 10
             }
           ]}
+          tooltip={({ datum }) => (
+            <div 
+              className="bg-white p-2 text-sm shadow-md rounded-md border-gray-200 border"
+              style={{ maxWidth: 200 }}
+            >
+              <div className="font-medium">{datum.label}</div>
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: datum.color }}
+                ></div>
+                <div>{datum.value}%</div>
+              </div>
+              {datum.data.originalData && (
+                <>
+                  {datum.data.originalData.goalMinutes > 0 && (
+                    <div className="text-xs text-gray-600 mt-1">
+                      Goal: {Math.round(datum.data.originalData.goalMinutes / 60 * 10) / 10}h
+                    </div>
+                  )}
+                  {datum.data.originalData.actualMinutes > 0 && (
+                    <div className="text-xs text-gray-600">
+                      Actual: {Math.round(datum.data.originalData.actualMinutes / 60 * 10) / 10}h
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         />
+        
+        {/* Center label (usually percentage) */}
         {centerLabel && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-4xl font-bold">{centerLabel}</div>
           </div>
         )}
         
-        {/* Show segment percentages around the donut */}
+        {/* Show segment percentages around the donut exactly as in mockup */}
         {segments.length > 0 && segments.length <= 3 && (
           <>
             {segments.map((segment, index) => {
-              // Position percentages around the donut
-              let top, left, align;
-              
-              // For 2 items, position top and bottom
-              if (segments.length === 2) {
-                if (index === 0) {
-                  top = '28%';
-                  left = '30%';
-                  align = 'left';
-                } else {
-                  top = '60%';
-                  left = '30%';
-                  align = 'left';
-                }
-              }
-              // For 3 items, position around the chart
-              else if (segments.length === 3) {
-                if (index === 0) {
-                  top = '30%';
-                  left = '68%';
-                  align = 'right';
-                } else if (index === 1) {
-                  top = '55%';
-                  left = '68%';
-                  align = 'right';
-                } else {
-                  top = '42%';
-                  left = '30%';
-                  align = 'left';
-                }
-              } else {
-                return null;
-              }
+              // Get position based on segment angle
+              const { left, top } = getLabelPosition(index, segments.length);
               
               return (
                 <div 
                   key={segment.name}
-                  className="absolute text-sm font-medium z-10"
+                  className="absolute text-sm font-medium z-10 transform -translate-x-1/2 -translate-y-1/2"
                   style={{ 
-                    top, 
-                    left, 
-                    textAlign: align as any
+                    left,
+                    top,
+                    color: darkenColor(segment.color, 20),
                   }}
                 >
                   {segment.value}%
@@ -385,13 +419,39 @@ export default function DashboardPage() {
   ) => {
     if (!category) return [];
     
-    const colors = getCategoryColors(category.name);
+    // Get balanced color palette from the category color
+    const categoryColor = category.color.startsWith('#') ? category.color : '#16A34A';
+    const { primary, secondary, tertiary } = generateBalancedColorScheme(categoryColor);
     
-    // Instead of relying on the calculatedPercentage property which TypeScript doesn't recognize,
-    // calculate percentages directly here
+    // Determine all colors based on subcategory count
+    const getColorForIndex = (idx: number, total: number) => {
+      // For small number of subcategories, use our balanced triad
+      if (total <= 3) {
+        if (idx === 0) return primary;
+        if (idx === 1) return secondary;
+        return tertiary;
+      }
+      
+      // For more subcategories, create a gradient
+      const baseColor = categoryColor;
+      const hueStep = idx / (total * 1.5); // Distribute colors evenly
+      
+      // For the first few, use our balanced colors
+      if (idx === 0) return primary;
+      if (idx === 1) return secondary;
+      if (idx === 2) return tertiary;
+      
+      // For additional items, create shades
+      return lightenColor(baseColor, 20 + (idx * 15) % 50);
+    };
+    
+    // Calculate percentages directly here
     const calculatePercentage = (subcategory: any) => {
-      const minutes = subcategory.goalMinutes;
-      const totalMinutes = category.subcategories.reduce((acc, curr) => acc + curr.goalMinutes, 0);
+      const minutes = subcategory.goalMinutes || 0;
+      const totalMinutes = category.subcategories.reduce(
+        (acc, curr) => acc + (curr.goalMinutes || 0), 
+        0
+      );
       return totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0;
     };
     
@@ -405,26 +465,63 @@ export default function DashboardPage() {
       segments = category.subcategories.map((sub, idx) => ({
         name: sub.name,
         value: calculatePercentage(sub),
-        color: idx === 0 ? colors.primary : (idx === 1 ? colors.secondary : colors.tertiary)
+        color: getColorForIndex(idx, category.subcategories.length),
+        // Store original data for tooltip
+        originalData: {
+          goalMinutes: sub.goalMinutes,
+          actualMinutes: (sub as any).actualMinutes || 0
+        }
       }));
     } else {
       // Use top subcategories and combine rest into "Other"
-      const topSubcategories = category.subcategories.slice(0, MAX_SEGMENTS - 1);
-      const otherSubcategories = category.subcategories.slice(MAX_SEGMENTS - 1);
+      const sortedSubcategories = [...category.subcategories].sort(
+        (a, b) => (b.goalMinutes || 0) - (a.goalMinutes || 0)
+      );
+      
+      const topSubcategories = sortedSubcategories.slice(0, MAX_SEGMENTS - 1);
+      const otherSubcategories = sortedSubcategories.slice(MAX_SEGMENTS - 1);
       
       segments = topSubcategories.map((sub, idx) => ({
         name: sub.name,
         value: calculatePercentage(sub),
-        color: idx === 0 ? colors.primary : colors.secondary
+        color: getColorForIndex(idx, MAX_SEGMENTS),
+        originalData: {
+          goalMinutes: sub.goalMinutes,
+          actualMinutes: (sub as any).actualMinutes || 0
+        }
       }));
       
       // Add "Other" category
-      const otherPercentage = otherSubcategories.reduce((acc: number, curr: any) => acc + calculatePercentage(curr), 0);
+      const otherPercentage = otherSubcategories.reduce(
+        (acc: number, curr: any) => acc + calculatePercentage(curr), 
+        0
+      );
+      
       segments.push({
         name: 'Other',
         value: otherPercentage,
-        color: colors.tertiary
+        color: getColorForIndex(MAX_SEGMENTS - 1, MAX_SEGMENTS),
+        originalData: {
+          goalMinutes: otherSubcategories.reduce(
+            (acc, curr) => acc + (curr.goalMinutes || 0), 
+            0
+          ),
+          actualMinutes: otherSubcategories.reduce(
+            (acc, curr) => acc + ((curr as any).actualMinutes || 0), 
+            0
+          )
+        }
       });
+    }
+    
+    // Ensure segments add up to 100%
+    const totalPercentage = segments.reduce((acc, segment) => acc + segment.value, 0);
+    if (totalPercentage !== 100 && totalPercentage > 0) {
+      // Normalize to 100%
+      segments = segments.map(segment => ({
+        ...segment,
+        value: Math.round((segment.value / totalPercentage) * 100)
+      }));
     }
     
     return segments;
