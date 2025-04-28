@@ -240,7 +240,7 @@ router.post('/register', async (req: Request, res: Response) => {
       res.status(201).json({ user: newUser, message: 'Registration successful' });
     });
   } catch (error: any) {
-    logger.error('Failed to register user', 'users:register', { body: req.body }, null, req.path, error);
+    logger.error('Failed to register user', 'users:register', { body: req.body }, undefined, req.path, error);
     res.status(500).json({ error: 'Failed to register user' });
   }
 });
@@ -249,7 +249,7 @@ router.post('/register', async (req: Request, res: Response) => {
 router.post('/login', (req: Request, res: Response, next: Function) => {
   passport.authenticate('local', (err: any, user: any, info: any) => {
     if (err) {
-      logger.error('Error during login', 'users:login', { username: req.body.username }, null, req.path, err);
+      logger.error('Error during login', 'users:login', { username: req.body.username }, undefined, req.path, err);
       return res.status(500).json({ error: 'An error occurred during login' });
     }
     
@@ -259,7 +259,7 @@ router.post('/login', (req: Request, res: Response, next: Function) => {
     
     req.login(user, (err) => {
       if (err) {
-        logger.error('Error logging in', 'users:login', { username: req.body.username }, null, req.path, err);
+        logger.error('Error logging in', 'users:login', { username: req.body.username }, undefined, req.path, err);
         return res.status(500).json({ error: 'Failed to log in' });
       }
       
