@@ -381,11 +381,15 @@ export default function DailyEntryForm({
                     name="predictedSleepHours"
                     render={({ field }) => (
                       <FormItem className="space-y-1 mb-3">
-                        <FormLabel className="text-sm font-medium">
+                        <FormLabel 
+                          htmlFor="predictedSleepHours"
+                          className="text-sm font-medium"
+                        >
                           Predicted Sleep (hours)
                         </FormLabel>
                         <FormControl>
                           <Input
+                            id="predictedSleepHours"
                             type="number"
                             min="0"
                             max="24"
@@ -418,11 +422,15 @@ export default function DailyEntryForm({
                     name="actualSleepHours"
                     render={({ field }) => (
                       <FormItem className="space-y-1 mb-3">
-                        <FormLabel className="text-sm font-medium">
+                        <FormLabel 
+                          htmlFor="actualSleepHours"
+                          className="text-sm font-medium"
+                        >
                           Actual Sleep (hours)
                         </FormLabel>
                         <FormControl>
                           <Input
+                            id="actualSleepHours"
                             type="number"
                             min="0"
                             max="24"
@@ -450,11 +458,15 @@ export default function DailyEntryForm({
                     name="sleepQuality"
                     render={({ field }) => (
                       <FormItem className="space-y-1 mb-2">
-                        <FormLabel className="text-sm font-medium">
+                        <FormLabel 
+                          htmlFor="sleepQuality"
+                          className="text-sm font-medium"
+                        >
                           Sleep Quality (1-10)
                         </FormLabel>
                         <FormControl>
                           <Input
+                            id="sleepQuality"
                             type="number"
                             min="1"
                             max="10"
@@ -483,11 +495,15 @@ export default function DailyEntryForm({
                   name="notes"
                   render={({ field }) => (
                     <FormItem className="space-y-1 mb-3 border-t border-gray-200 pt-4">
-                      <FormLabel className="text-sm font-medium">
+                      <FormLabel 
+                        htmlFor="notes"
+                        className="text-sm font-medium"
+                      >
                         Day Notes
                       </FormLabel>
                       <FormControl>
                         <Input
+                          id="notes"
                           {...field}
                           placeholder="Any notes about your day..."
                           className="w-full"
@@ -506,12 +522,13 @@ export default function DailyEntryForm({
                     <FormItem className="flex flex-row items-start space-x-3 space-y-0 mb-1 mt-3">
                       <FormControl>
                         <Checkbox
+                          id="exportFlag"
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel className="text-sm font-medium cursor-pointer">
+                        <FormLabel htmlFor="exportFlag" className="text-sm font-medium cursor-pointer">
                           Include in History Exports
                         </FormLabel>
                         <p className="text-xs text-gray-500">
