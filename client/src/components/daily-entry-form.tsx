@@ -165,6 +165,11 @@ export default function DailyEntryForm({
   // Update entry mutation
   const updateDailyEntryMutation = useMutation({
     mutationFn: async (values: DailyEntryFormValues) => {
+      // Ensure we have a valid entry ID
+      if (!currentEntry || !currentEntry.id) {
+        throw new Error("Cannot update entry: Missing entry ID");
+      }
+      
       // First update the daily entry
       const entryResponse = await apiRequest(
         "PATCH", 
@@ -287,7 +292,7 @@ export default function DailyEntryForm({
       
       // Submit the daily entry data
       let dailyEntry;
-      if (isEditMode) {
+      if (isEditMode && currentEntry && currentEntry.id) {
         dailyEntry = await updateDailyEntryMutation.mutateAsync(payload);
       } else {
         dailyEntry = await createDailyEntryMutation.mutateAsync(payload);
