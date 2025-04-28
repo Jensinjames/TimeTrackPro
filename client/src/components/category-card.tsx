@@ -71,7 +71,14 @@ export default function CategoryCard({
                     categoryColors.blue;
   const iconClass = getCategoryIcon(icon);
   
-  // Create chart segments from subcategories if available, or use defaults
+  /**
+   * Create chart segments from subcategories with normalized percentages 
+   * 
+   * - Generates pie chart segments based on actualMinutes (not goalMinutes)
+   * - Ensures segments always add up to exactly 100%
+   * - Guarantees minimal segment visibility (at least 1%) for active categories
+   * - Provides fallback for edge cases with no data
+   */
   const createSegmentsFromSubcategories = () => {
     if (!subcategories || subcategories.length === 0) {
       // Default data if no subcategories
@@ -138,11 +145,21 @@ export default function CategoryCard({
         }
       }));
     } else {
-      // Sort by percentage/goalMinutes (descending)
+      // Sort by actualMinutes/percentage (descending)
+      // First calculate percentages for all subcategories (using actual minutes)
+      subcategories.forEach(sub => calculatePercentage(sub, true));
+      
       const sortedSubcategories = [...subcategories].sort((a, b) => {
+        // First try to sort by actual minutes
+        const actualDiff = (b.actualMinutes || 0) - (a.actualMinutes || 0);
+        if (actualDiff !== 0) return actualDiff;
+        
+        // Then try percentage
         if (a.calculatedPercentage && b.calculatedPercentage) {
           return b.calculatedPercentage - a.calculatedPercentage;
         }
+        
+        // Finally, fall back to goal minutes
         return (b.goalMinutes || 0) - (a.goalMinutes || 0);
       });
       
