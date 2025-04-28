@@ -1,0 +1,366 @@
+
+> rest-express@1.0.0 dev
+[2025-04-28T22:38:06.358Z] [INFO] [api]: API routes registered successfully 
+10:38:06 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Auth debug - Request to /api/user - Cookies: connect.sid=s%3A63k8xjV7uNj2bm3BL_OxfQjN...
+Auth debug - Session ID: 63k8xjV7uN
+10:38:10 PM [express] GET /api/user 401 in 3ms
+[2025-04-28T22:38:10.484Z] [WARN] [api]: Request error: GET /api/user { statusCode: 401, duration: 3 }
+Auth debug - Request to /api/user - Cookies: no cookies...
+Auth debug - Session ID: EHAn2JziUa
+10:38:11 PM [express] GET /api/user 401 in 2ms
+[2025-04-28T22:38:11.805Z] [WARN] [api]: Request error: GET /api/user { statusCode: 401, duration: 2 }
+Auth debug - Request to /api/user - Cookies: connect.sid=s%3A63k8xjV7uNj2bm3BL_OxfQjN...
+Auth debug - Session ID: 63k8xjV7uN
+10:38:29 PM [express] GET /api/user 401 in 2ms
+[2025-04-28T22:38:29.742Z] [WARN] [api]: Request error: GET /api/user { statusCode: 401, duration: 2 }
+Auth debug - Request to /api/user - Cookies: no cookies...
+Auth debug - Session ID: 1WngaAiC20
+10:38:31 PM [express] GET /api/user 401 in 1ms
+[2025-04-28T22:38:31.554Z] [WARN] [api]: Request error: GET /api/user { statusCode: 401, duration: 1 }
+Auth debug - Request to /api/user - Cookies: no cookies...
+Auth debug - Session ID: EQTkaxuEoa
+10:39:50 PM [express] GET /api/user 401 in 2ms
+[2025-04-28T22:39:50.455Z] [WARN] [api]: Request error: GET /api/user { statusCode: 401, duration: 2 }
+Auth debug - Request to /api/user - Cookies: connect.sid=s%3A-QUEaeiekogrNpildws-N7vf...
+Auth debug - Session ID: -QUEaeieko
+10:40:04 PM [express] GET /api/user 401 in 2ms
+[2025-04-28T22:40:04.216Z] [WARN] [api]: Request error: GET /api/user { statusCode: 401, duration: 2 }
+Login attempt for username: jensin
+User found: jensin, id: 1
+Comparing supplied password with stored hash: d29b7833af1dda7d7fae...
+Password comparison result: true
+Successful login for user: jensin
+Serializing user ID: 1
+10:40:09 PM [express] POST /api/login 200 in 842ms :: {"id":1,"username":"jensin","email":"jensinjame…
+[2025-04-28T22:40:09.532Z] [DEBUG] [api]: Request completed: POST /api/login { statusCode: 200, duration: 842 }
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+10:40:10 PM [express] GET /api/categories 304 in 458ms :: [{"id":1,"uuid":"600ea9ec-97aa-44e0-b398-59…
+[2025-04-28T22:40:10.135Z] [DEBUG] [api]: Request completed: GET /api/categories { statusCode: 304, duration: 458 }
+10:40:10 PM [express] GET /api/dashboard 200 in 505ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:40:10.180Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 200, duration: 505 }
+Deserializing user ID: 1
+Deserializing user ID: 1
+10:40:20 PM [express] POST /api/entries 200 in 516ms :: {"id":10,"userId":1,"date":"2025-04-28T19:33:…
+[2025-04-28T22:40:20.218Z] [DEBUG] [api]: Request completed: POST /api/entries { statusCode: 200, duration: 516 }
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+10:40:20 PM [express] GET /api/dashboard 304 in 482ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:40:20.792Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 304, duration: 482 }
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+10:40:21 PM [express] GET /api/dashboard 304 in 470ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:40:21.387Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 304, duration: 470 }
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+10:40:21 PM [express] GET /api/dashboard 304 in 463ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:40:21.927Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 304, duration: 463 }
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+10:40:22 PM [express] GET /api/dashboard 304 in 463ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:40:22.452Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 304, duration: 463 }
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Auth debug - Request to /api/user - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+10:40:30 PM [express] GET /api/user 304 in 39ms :: {"id":1,"username":"jensin","email":"jensinjames@y…
+[2025-04-28T22:40:30.172Z] [DEBUG] [api]: Request completed: GET /api/user { statusCode: 304, duration: 39 }
+Deserializing user ID: 1
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Deserializing user ID: 1
+10:40:30 PM [express] GET /api/categories 304 in 300ms :: [{"id":1,"uuid":"600ea9ec-97aa-44e0-b398-59…
+[2025-04-28T22:40:30.550Z] [DEBUG] [api]: Request completed: GET /api/categories { statusCode: 304, duration: 300 }
+10:40:30 PM [express] GET /api/dashboard 200 in 481ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:40:30.725Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 200, duration: 481 }
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+Deserializing user ID: 1
+10:40:53 PM [express] GET /api/categories 304 in 424ms :: [{"id":1,"uuid":"600ea9ec-97aa-44e0-b398-59…
+[2025-04-28T22:40:53.745Z] [DEBUG] [api]: Request completed: GET /api/categories { statusCode: 304, duration: 424 }
+Deserializing user ID: 1
+Deserializing user ID: 1
+10:41:26 PM [express] POST /api/entries 200 in 611ms :: {"id":10,"userId":1,"date":"2025-04-28T19:33:…
+[2025-04-28T22:41:26.198Z] [DEBUG] [api]: Request completed: POST /api/entries { statusCode: 200, duration: 611 }
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+10:41:26 PM [express] GET /api/dashboard 200 in 467ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:41:26.734Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 200, duration: 467 }
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+10:41:27 PM [express] GET /api/dashboard 304 in 467ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:41:27.335Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 304, duration: 467 }
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+10:41:27 PM [express] GET /api/dashboard 304 in 468ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:41:27.872Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 304, duration: 468 }
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+Auth debug - Request to /api/dashboard - Cookies: connect.sid=s%3AMl8FUMiM5LHXwjF25ENw00Bx...
+Auth debug - Session ID: Ml8FUMiM5L
+Deserializing user ID: 1
+10:41:28 PM [express] GET /api/dashboard 304 in 479ms :: {"dailyScore":0,"motivationLevel":0,"sleepDu…
+[2025-04-28T22:41:28.418Z] [DEBUG] [api]: Request completed: GET /api/dashboard { statusCode: 304, duration: 479 }
+Auth debug - Request to /api/user - Cookies: no cookies...
+Auth debug - Session ID: RLsZYrXNaw
+10:41:30 PM [express] GET /api/user 401 in 1ms
+[2025-04-28T22:41:30.539Z] [WARN] [api]: Request error: GET /api/user { statusCode: 401, duration: 1 }
