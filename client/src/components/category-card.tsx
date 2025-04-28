@@ -7,6 +7,14 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ResponsivePie } from "@nivo/pie";
 
+interface Subcategory {
+  id: number;
+  name: string;
+  goalMinutes: number;
+  actualMinutes?: number;
+  calculatedPercentage?: number;
+}
+
 interface CategoryCardProps {
   id: number;
   name: string;
@@ -19,6 +27,7 @@ interface CategoryCardProps {
   progress: number;
   onClick: () => void;
   isSelected?: boolean;
+  subcategories?: Subcategory[];
 }
 
 export default function CategoryCard({
@@ -33,12 +42,140 @@ export default function CategoryCard({
   progress,
   onClick,
   isSelected = false,
+  subcategories = []
 }: CategoryCardProps) {
-  // Handle both named colors and hex codes
+  // Get balanced color scheme from the category color
+  const categoryColor = color.startsWith('#') ? color : '#16A34A';
+  const { primary, secondary, tertiary } = generateBalancedColorScheme(categoryColor);
+  
+  // For backwards compatibility, also use the old color system
   const colorStyle = categoryColors[color] || 
                     (color && color.startsWith('#') ? categoryColors[color] : null) || 
                     categoryColors.blue;
   const iconClass = getCategoryIcon(icon);
+  
+  // Create chart segments from subcategories if available, or use defaults
+  const createSegmentsFromSubcategories = () => {
+    if (!subcategories || subcategories.length === 0) {
+      // Default data if no subcategories
+      return [
+        { id: 'segment1', label: 'Segment 1', value: 60, color: primary },
+        { id: 'segment2', label: 'Segment 2', value: 25, color: secondary },
+        { id: 'segment3', label: 'Segment 3', value: 15, color: tertiary }
+      ];
+    }
+    
+    // Determine colors for each subcategory
+    const getColorForIndex = (idx: number, total: number) => {
+      // For small number of subcategories, use our balanced triad
+      if (total <= 3) {
+        if (idx === 0) return primary;
+        if (idx === 1) return secondary;
+        return tertiary;
+      }
+      
+      // For more subcategories, create shades
+      if (idx === 0) return primary;
+      if (idx === 1) return secondary;
+      if (idx === 2) return tertiary;
+      
+      // For additional items, create shades
+      return lightenColor(primary, 20 + (idx * 15) % 50);
+    };
+    
+    // Calculate percentages for each subcategory
+    const calculatePercentage = (subcategory: Subcategory) => {
+      // If we already have a calculated percentage, use it
+      if (subcategory.calculatedPercentage) {
+        return subcategory.calculatedPercentage;
+      }
+      
+      const minutes = subcategory.goalMinutes || 0;
+      const totalMinutes = subcategories.reduce(
+        (acc, curr) => acc + (curr.goalMinutes || 0), 
+        0
+      );
+      return totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0;
+    };
+    
+    // Use top 3 subcategories or combine into "Other"
+    const MAX_SEGMENTS = 3;
+    let segments = [];
+    
+    if (subcategories.length <= MAX_SEGMENTS) {
+      // Use all subcategories
+      segments = subcategories.map((sub, idx) => ({
+        id: `category-${sub.id}`,
+        label: sub.name,
+        value: calculatePercentage(sub),
+        color: getColorForIndex(idx, subcategories.length),
+        originalData: {
+          goalMinutes: sub.goalMinutes,
+          actualMinutes: sub.actualMinutes || 0
+        }
+      }));
+    } else {
+      // Sort by percentage/goalMinutes (descending)
+      const sortedSubcategories = [...subcategories].sort((a, b) => {
+        if (a.calculatedPercentage && b.calculatedPercentage) {
+          return b.calculatedPercentage - a.calculatedPercentage;
+        }
+        return (b.goalMinutes || 0) - (a.goalMinutes || 0);
+      });
+      
+      // Use top subcategories and combine rest into "Other"
+      const topSubcategories = sortedSubcategories.slice(0, MAX_SEGMENTS - 1);
+      const otherSubcategories = sortedSubcategories.slice(MAX_SEGMENTS - 1);
+      
+      segments = topSubcategories.map((sub, idx) => ({
+        id: `category-${sub.id}`,
+        label: sub.name,
+        value: calculatePercentage(sub),
+        color: getColorForIndex(idx, MAX_SEGMENTS),
+        originalData: {
+          goalMinutes: sub.goalMinutes,
+          actualMinutes: sub.actualMinutes || 0
+        }
+      }));
+      
+      // Add "Other" category
+      const otherPercentage = otherSubcategories.reduce(
+        (acc, curr) => acc + calculatePercentage(curr), 
+        0
+      );
+      
+      segments.push({
+        id: 'category-other',
+        label: 'Other',
+        value: otherPercentage,
+        color: getColorForIndex(MAX_SEGMENTS - 1, MAX_SEGMENTS),
+        originalData: {
+          goalMinutes: otherSubcategories.reduce(
+            (acc, curr) => acc + (curr.goalMinutes || 0), 
+            0
+          ),
+          actualMinutes: otherSubcategories.reduce(
+            (acc, curr) => acc + (curr.actualMinutes || 0), 
+            0
+          )
+        }
+      });
+    }
+    
+    // Ensure segments add up to 100%
+    const totalPercentage = segments.reduce((acc, segment) => acc + segment.value, 0);
+    if (totalPercentage !== 100 && totalPercentage > 0) {
+      // Normalize to 100%
+      segments = segments.map(segment => ({
+        ...segment,
+        value: Math.round((segment.value / totalPercentage) * 100)
+      }));
+    }
+    
+    return segments;
+  };
+  
+  const pieData = createSegmentsFromSubcategories();
   
   // Animation states
   const [isVisible, setIsVisible] = useState(false);
@@ -141,77 +278,136 @@ export default function CategoryCard({
         `}
         onClick={onClick}
       >
-        <CardContent className="p-0">
-          <motion.div 
-            className={`${colorStyle.bg} h-2`}
-            initial={{ width: 0 }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 0.7, delay: id * 0.05 }}
-          ></motion.div>
+        <CardContent className="p-0 overflow-hidden">
+          {/* Category header with primary color background */}
+          <div 
+            className="p-3 font-bold text-white uppercase text-lg" 
+            style={{ backgroundColor: primary }}
+          >
+            {name}
+          </div>
+          
           <div className="p-4 sm:p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1 min-w-0 pr-2">
-                <motion.h3 
-                  className="font-medium text-base sm:text-lg truncate"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.1 + (id * 0.05) }}
-                >
-                  {name}
-                </motion.h3>
-                <motion.p 
-                  className="text-xs sm:text-sm text-gray-500 truncate"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4, delay: 0.2 + (id * 0.05) }}
-                >
-                  {animatedHours.toFixed(1)} / {goalPeriod === 'monthly' ? 
-                    (monthlyGoalHours || goalHours * 30).toFixed(0) + ' hrs/month' : 
-                    goalHours + ' hrs/day'}
-                </motion.p>
+            <div className="flex flex-col md:flex-row">
+              {/* Left column - current reality and goal */}
+              <div className="flex-1">
+                <div className="mb-5">
+                  <motion.h4 
+                    className="font-semibold mb-1"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.1 + (id * 0.05) }}
+                  >
+                    Current Reality
+                  </motion.h4>
+                  <motion.div
+                    className="text-xl font-medium"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4, delay: 0.2 + (id * 0.05) }}
+                  >
+                    Actual: {formatHours(actualHours)}h
+                  </motion.div>
+                  <motion.div 
+                    className="text-sm text-gray-600"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4, delay: 0.25 + (id * 0.05) }}
+                  >
+                    Time spent on {name.toLowerCase()}-related activities
+                  </motion.div>
+                </div>
+                
+                <div>
+                  <motion.h4 
+                    className="font-semibold mb-1"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.3 + (id * 0.05) }}
+                  >
+                    Goal
+                  </motion.h4>
+                  <motion.div
+                    className="text-xl font-medium"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4, delay: 0.35 + (id * 0.05) }}
+                  >
+                    Goal: {formatHours(goalHours)}h
+                  </motion.div>
+                  <motion.div 
+                    className="text-sm text-gray-600"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4, delay: 0.4 + (id * 0.05) }}
+                  >
+                    {goalPeriod === 'monthly' ? 'Monthly target' : 'Daily target'}
+                  </motion.div>
+                </div>
               </div>
-              <motion.div 
-                className={`
-                  h-9 w-9 sm:h-10 sm:w-10 rounded-full ${colorStyle.light} 
-                  flex items-center justify-center flex-shrink-0
-                `}
-                variants={iconVariants}
-              >
-                <i className={`${iconClass} ${colorStyle.text} text-sm sm:text-base`}></i>
-              </motion.div>
+              
+              {/* Right column - donut chart visualization */}
+              <div className="flex-1 flex justify-center pt-4 md:pt-0">
+                <div className="relative" style={{ width: 180, height: 180 }}>
+                  <ResponsivePie
+                    data={pieData}
+                    margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                    innerRadius={0.7}
+                    padAngle={0.7}
+                    cornerRadius={3}
+                    activeOuterRadiusOffset={8}
+                    colors={{ datum: 'data.color' }}
+                    borderWidth={1}
+                    borderColor={{ from: 'color', modifiers: [['brighter', 0.2]] }}
+                    enableArcLabels={false}
+                    enableArcLinkLabels={false}
+                    isInteractive={true}
+                    motionConfig="gentle"
+                    transitionMode="startAngle"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-4xl font-bold">{Math.round(progress)}%</div>
+                  </div>
+                  
+                  {/* Segment percentages positioned dynamically */}
+                  {pieData.map((segment, idx) => {
+                    // Position labels at calculated angles
+                    const angle = (idx / pieData.length) * 2 * Math.PI;
+                    const radius = 60; // Distance from center
+                    const left = 90 + Math.cos(angle) * radius;
+                    const top = 90 + Math.sin(angle) * radius;
+                    
+                    return (
+                      <div
+                        key={segment.id}
+                        className="absolute text-sm font-medium z-10 transform -translate-x-1/2 -translate-y-1/2"
+                        style={{
+                          left: `${left}px`,
+                          top: `${top}px`,
+                          color: darkenColor(segment.color, 20)
+                        }}
+                      >
+                        {segment.value}%
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <motion.div 
-                className="flex justify-between text-xs"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.3 + (id * 0.05) }}
-              >
-                <span>Progress</span>
-                <span className={colorStyle.text}>{Math.round(animatedProgress)}%</span>
-              </motion.div>
-              
-              <div className="relative h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                <motion.div
-                  className={`absolute h-full ${colorStyle.bg}`}
-                  style={{ width: `${animatedProgress}%` }}
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${animatedProgress}%` }}
-                  transition={{ duration: 0.7, delay: 0.3 + (id * 0.05) }}
-                />
-              </div>
-              
-              {goalPeriod === 'monthly' && (
-                <motion.span 
-                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-2"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: 0.4 + (id * 0.05) }}
-                >
-                  Monthly Goal
-                </motion.span>
-              )}
+            {/* Legend row with actual subcategory names */}
+            <div className="flex justify-center flex-wrap gap-3 mt-4">
+              {pieData.map((segment) => (
+                <div key={segment.id} className="flex items-center">
+                  <div 
+                    className="w-3 h-3 rounded-full mr-1" 
+                    style={{ backgroundColor: segment.color }}
+                  ></div>
+                  <span className="text-xs sm:text-sm truncate max-w-[100px]">
+                    {segment.label || 'Category'}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </CardContent>
