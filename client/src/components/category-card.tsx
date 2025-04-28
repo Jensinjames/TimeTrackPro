@@ -369,24 +369,46 @@ export default function CategoryCard({
               <div className="flex-1 flex justify-center pt-4 md:pt-0">
                 <div className="relative" style={{ width: 180, height: 180 }}>
                   {/* Main Donut Chart */}
-                  <ResponsivePie
-                    data={pieData}
-                    margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
-                    innerRadius={0.7}
-                    padAngle={0.7}
-                    cornerRadius={3}
-                    activeOuterRadiusOffset={8}
-                    colors={{ datum: 'data.color' }}
-                    borderWidth={1}
-                    borderColor={{ from: 'color', modifiers: [['brighter', 0.2]] }}
-                    enableArcLabels={false}
-                    enableArcLinkLabels={false}
-                    isInteractive={true}
-                    motionConfig="gentle"
-                    transitionMode="startAngle"
-                    // Add custom arc styling based on goal progress
-                    arcLabelsTextColor={{ theme: 'background' }}
-                    tooltip={({ datum }) => {
+                  <div role="img" aria-label={`${name} category progress chart showing ${Math.round(progress)}% overall completion`}>
+                    <ResponsivePie
+                      data={pieData}
+                      margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                      innerRadius={0.7}
+                      padAngle={0.7}
+                      cornerRadius={3}
+                      activeOuterRadiusOffset={8}
+                      colors={{ datum: 'data.color' }}
+                      borderWidth={1}
+                      borderColor={{ from: 'color', modifiers: [['brighter', 0.2]] }}
+                      enableArcLabels={false}
+                      enableArcLinkLabels={false}
+                      isInteractive={true}
+                      motionConfig="gentle"
+                      transitionMode="startAngle"
+                      // Add custom arc styling based on goal progress
+                      arcLabelsTextColor={{ theme: 'background' }}
+                      animate={true}
+                      defs={[
+                        {
+                          id: 'dots',
+                          type: 'patternDots',
+                          background: 'inherit',
+                          color: 'rgba(255, 255, 255, 0.3)',
+                          size: 4,
+                          padding: 1,
+                          stagger: true
+                        },
+                        {
+                          id: 'lines',
+                          type: 'patternLines',
+                          background: 'inherit',
+                          color: 'rgba(255, 255, 255, 0.3)',
+                          rotation: -45,
+                          lineWidth: 6,
+                          spacing: 10
+                        }
+                      ]}
+                      tooltip={({ datum }) => {
                       // Use typecasting for the datum, as type system doesn't know the structure
                       const data = datum.data as PieDataItem;
                       const goalMinutes = hasOriginalData(data) ? data.originalData.goalMinutes : 0;
@@ -528,8 +550,12 @@ export default function CategoryCard({
                       <div 
                         className="w-3 h-3 rounded-full mr-2" 
                         style={{ backgroundColor: segment.color }}
+                        role="presentation"
+                        aria-hidden="true"
                       ></div>
-                      <span className="truncate max-w-[100px]">{segment.label || 'Category'}</span>
+                      <span className="truncate max-w-[100px]" title={segment.label || 'Category'}>
+                        {segment.label || 'Category'}
+                      </span>
                     </div>
                     
                     {/* Completion Percentage */}
@@ -552,18 +578,36 @@ export default function CategoryCard({
             </div>
             
             {/* Legend row with actual subcategory names */}
-            <div className="flex justify-center flex-wrap gap-3 mt-4">
+            <div className="flex justify-center flex-wrap gap-3 mt-4" role="group" aria-label="Category allocation summary">
               {pieData.map((segment) => {
+                // Calculate completion percentage for this legend item
+                const goalMinutes = hasOriginalData(segment) ? segment.originalData.goalMinutes : 0;
+                const actualMinutes = hasOriginalData(segment) ? segment.originalData.actualMinutes : 0;
+                
                 return (
-                  <div key={`legend-${segment.id}`} className="flex items-center">
+                  <div 
+                    key={`legend-${segment.id}`} 
+                    className="flex items-center"
+                    role="listitem"
+                    aria-label={`${segment.label}: ${segment.value}% allocation, ${(actualMinutes / 60).toFixed(1)} hours actual of ${(goalMinutes / 60).toFixed(1)} hours goal`}
+                  >
                     <div 
                       className="w-3 h-3 rounded-full mr-1" 
                       style={{ backgroundColor: segment.color }}
+                      role="presentation"
+                      aria-hidden="true"
                     ></div>
-                    <span className="text-xs sm:text-sm truncate max-w-[100px]">
+                    <span 
+                      className="text-xs sm:text-sm truncate max-w-[100px]"
+                      title={`${segment.label}: ${(actualMinutes / 60).toFixed(1)}h / ${(goalMinutes / 60).toFixed(1)}h`}
+                    >
                       {segment.label || 'Category'}
                     </span>
-                    <span className="text-xs font-medium ml-1" style={{ color: primary }}>
+                    <span 
+                      className="text-xs font-medium ml-1" 
+                      style={{ color: primary }}
+                      title="Percentage allocation"
+                    >
                       {segment.value}%
                     </span>
                   </div>
