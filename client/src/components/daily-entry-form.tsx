@@ -167,8 +167,11 @@ export default function DailyEntryForm({
     mutationFn: async (values: DailyEntryFormValues) => {
       // Ensure we have a valid entry ID
       if (!currentEntry || !currentEntry.id) {
+        console.error("Update error: Missing entry ID", { currentEntry });
         throw new Error("Cannot update entry: Missing entry ID");
       }
+      
+      console.log("Updating entry with ID:", currentEntry.id);
       
       // First update the daily entry
       const entryResponse = await apiRequest(
@@ -178,16 +181,23 @@ export default function DailyEntryForm({
       );
       const entry = await entryResponse.json();
       
+      if (!entry || !entry.id) {
+        console.error("Update error: Invalid entry response", { entry });
+        throw new Error("Failed to update entry: Invalid response");
+      }
+      
       // Then update time and habit records
       const recordPromises = [];
       
-      // Update time records
-      for (const [subcategoryId, minutes] of Object.entries(timeRecords)) {
-        recordPromises.push(
-          apiRequest("PUT", `/api/entries/${entry.id}/time-records/${subcategoryId}`, {
-            minutes: minutes * 60 // Convert hours to minutes
-          })
-        );
+      // Update time records - only include records with time > 0
+      for (const [subcategoryId, hours] of Object.entries(timeRecords)) {
+        if (hours > 0) {
+          recordPromises.push(
+            apiRequest("PUT", `/api/entries/${entry.id}/time-records/${subcategoryId}`, {
+              minutes: Math.round(hours * 60) // Convert hours to minutes
+            })
+          );
+        }
       }
       
       // Update habit records
@@ -280,10 +290,12 @@ export default function DailyEntryForm({
         // Ensure date is in the correct format
         date: selectedDate,
         // Include time and habit records
-        timeRecords: Object.entries(timeRecords).map(([subcategoryId, hours]) => ({
-          subcategoryId: parseInt(subcategoryId),
-          minutes: Math.round(hours * 60) // Convert hours to minutes
-        })),
+        timeRecords: Object.entries(timeRecords)
+          .filter(([_, hours]) => hours > 0) // Only include records with time > 0
+          .map(([subcategoryId, hours]) => ({
+            subcategoryId: parseInt(subcategoryId),
+            minutes: Math.round(hours * 60) // Convert hours to minutes
+          })),
         habitRecords: Object.entries(habitRecords).map(([subcategoryId, completed]) => ({
           subcategoryId: parseInt(subcategoryId),
           completed
@@ -293,8 +305,10 @@ export default function DailyEntryForm({
       // Submit the daily entry data
       let dailyEntry;
       if (isEditMode && currentEntry && currentEntry.id) {
+        console.log("Updating entry with ID:", currentEntry.id);
         dailyEntry = await updateDailyEntryMutation.mutateAsync(payload);
       } else {
+        console.log("Creating new entry");
         dailyEntry = await createDailyEntryMutation.mutateAsync(payload);
       }
       
@@ -594,12 +608,17 @@ export default function DailyEntryForm({
                                 <div key={sub.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                                   <label 
                                     htmlFor={`time-${category.id}-${sub.id}`} 
-                                    className="text-sm font-medium truncate"
+                                    className="text-sm font-medium truncate flex items-center"
                                   >
+                                    <div className="h-4 w-4 rounded-full mr-2 flex items-center justify-center" 
+                                      style={{ backgroundColor: secondary, color: textColor }}>
+                                      <i className={`${getCategoryIcon(category.icon)} text-xs`}></i>
+                                    </div>
                                     {sub.name}
                                   </label>
                                   <Select
                                     defaultValue={timeRecords[sub.id]?.toString() || "0.25"}
+                                    value={timeRecords[sub.id]?.toString() || "0.25"}
                                     onValueChange={(value) => handleTimeChange(sub.id, value)}
                                   >
                                     <SelectTrigger 
@@ -643,8 +662,12 @@ export default function DailyEntryForm({
                                   />
                                   <label 
                                     htmlFor={`habit-${sub.id}`}
-                                    className="text-sm font-medium cursor-pointer truncate"
+                                    className="text-sm font-medium cursor-pointer truncate flex items-center"
                                   >
+                                    <div className="h-4 w-4 rounded-full mr-2 flex items-center justify-center" 
+                                      style={{ backgroundColor: secondary, color: textColor }}>
+                                      <i className={`${getCategoryIcon(category.icon)} text-xs`}></i>
+                                    </div>
                                     {sub.name}
                                   </label>
                                 </div>
