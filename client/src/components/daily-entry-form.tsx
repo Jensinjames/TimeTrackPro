@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CategoryWithSubcategories } from "@shared/schema";
 import { format } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -318,13 +318,12 @@ export default function DailyEntryForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className={isMobile ? "w-full max-w-full h-[95vh] max-h-full overflow-y-auto pb-24" : "w-[95vw] max-w-[650px] max-h-[85vh] overflow-y-auto"}
-        description="Form to enter or edit daily time tracking data, including sleep metrics, time allocation, and habit completion."
       >
         <DialogHeader className="pb-2">
           <DialogTitle className="text-xl sm:text-2xl">{isEditMode ? "Edit" : "Add"} Daily Entry</DialogTitle>
-          <p className="text-sm text-gray-500 mt-1">
-            Date: {format(selectedDate, "EEEE, MMMM d, yyyy")}
-          </p>
+          <DialogDescription>
+            Form to enter or edit daily time tracking data for {format(selectedDate, "EEEE, MMMM d, yyyy")}
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
