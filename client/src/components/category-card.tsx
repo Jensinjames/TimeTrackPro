@@ -1,9 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getCategoryIcon } from "@/lib/utils";
+import { getCategoryIcon, formatHours } from "@/lib/utils";
 import { categoryColors } from "@/lib/utils";
+import { lightenColor, darkenColor, generateBalancedColorScheme, getContrastingTextColor } from "@/lib/color-utils";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { ResponsivePie } from "@nivo/pie";
 
 interface CategoryCardProps {
   id: number;
