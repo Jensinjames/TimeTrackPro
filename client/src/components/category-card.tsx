@@ -7,6 +7,23 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ResponsivePie } from "@nivo/pie";
 
+// Type definition for pie chart data
+export type PieDataItem = {
+  id: string;
+  label: string;
+  value: number;
+  color: string;
+  originalData?: {
+    goalMinutes: number;
+    actualMinutes: number;
+  };
+};
+
+// Type guard function to safely check if segment has originalData
+export const hasOriginalData = (segment: PieDataItem): segment is PieDataItem & { originalData: { goalMinutes: number; actualMinutes: number } } => {
+  return segment.hasOwnProperty('originalData') && segment.originalData !== undefined;
+};
+
 interface Subcategory {
   id: number;
   name: string;
@@ -65,6 +82,8 @@ export default function CategoryCard({
       ];
     }
     
+    // Use the global types defined at the top of the file
+
     // Determine colors for each subcategory
     const getColorForIndex = (idx: number, total: number) => {
       // For small number of subcategories, use our balanced triad
@@ -349,6 +368,7 @@ export default function CategoryCard({
               {/* Right column - donut chart visualization */}
               <div className="flex-1 flex justify-center pt-4 md:pt-0">
                 <div className="relative" style={{ width: 180, height: 180 }}>
+                  {/* Main Donut Chart */}
                   <ResponsivePie
                     data={pieData}
                     margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
@@ -364,30 +384,98 @@ export default function CategoryCard({
                     isInteractive={true}
                     motionConfig="gentle"
                     transitionMode="startAngle"
+                    // Add custom arc styling based on goal progress
+                    arcLabelsTextColor={{ theme: 'background' }}
+                    tooltip={({ datum }) => {
+                      // Use typecasting for the datum, as type system doesn't know the structure
+                      const data = datum.data as PieDataItem;
+                      const goalMinutes = hasOriginalData(data) ? data.originalData.goalMinutes : 0;
+                      const actualMinutes = hasOriginalData(data) ? data.originalData.actualMinutes : 0;
+                      
+                      return (
+                        <div 
+                          style={{
+                            background: 'white',
+                            padding: '8px 12px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            color: '#333',
+                            fontSize: '12px',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                          }}
+                        >
+                          <strong>{datum.label}</strong><br />
+                          Goal: {(goalMinutes / 60).toFixed(1)}h<br />
+                          Actual: {(actualMinutes / 60).toFixed(1)}h<br />
+                          Allocation: {datum.value}%
+                        </div>
+                      );
+                    }}
                   />
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  
+                  {/* Center percentage */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <div className="text-4xl font-bold">{Math.round(progress)}%</div>
+                    {/* Optional small label below */}
+                    <div className="text-xs text-gray-500 mt-1">Completion</div>
                   </div>
                   
-                  {/* Segment percentages positioned dynamically */}
+                  {/* Segment names positioned with connecting lines */}
                   {pieData.map((segment, idx) => {
-                    // Position labels at calculated angles
-                    const angle = (idx / pieData.length) * 2 * Math.PI;
-                    const radius = 60; // Distance from center
-                    const left = 90 + Math.cos(angle) * radius;
-                    const top = 90 + Math.sin(angle) * radius;
+                    // Distribute labels evenly around the chart
+                    // Adjust angle to position labels based on their position in the pie chart
+                    let startAngle = 0;
+                    let total = 0;
+                    
+                    // Calculate the start angle for this segment
+                    for (let i = 0; i < idx; i++) {
+                      total += pieData[i].value;
+                    }
+                    
+                    startAngle = (total / 100) * 2 * Math.PI;
+                    const segmentAngle = (segment.value / 100) * 2 * Math.PI;
+                    const midAngle = startAngle + (segmentAngle / 2);
+                    
+                    // Position labels at calculated angles, a bit further out than the pie chart
+                    const innerRadius = 70; // For label position
+                    const outerRadius = 83; // For line end position
+                    
+                    // Calculate positions using trigonometry
+                    const labelX = 90 + Math.cos(midAngle) * innerRadius;
+                    const labelY = 90 + Math.sin(midAngle) * innerRadius;
+                    
+                    // Calculate line end point (on the outside edge of the pie segment)
+                    const lineEndX = 90 + Math.cos(midAngle) * outerRadius;
+                    const lineEndY = 90 + Math.sin(midAngle) * outerRadius;
+                    
+                    // Calculate completion percentage for this subcategory
+                    const goalMinutes = segment.hasOwnProperty('originalData') ? (segment as any).originalData?.goalMinutes || 0 : 0;
+                    const actualMinutes = segment.hasOwnProperty('originalData') ? (segment as any).originalData?.actualMinutes || 0 : 0;
+                    const completionPercentage = goalMinutes > 0 
+                      ? Math.round((actualMinutes / goalMinutes) * 100) 
+                      : 0;
                     
                     return (
-                      <div
-                        key={segment.id}
-                        className="absolute text-sm font-medium z-10 transform -translate-x-1/2 -translate-y-1/2"
-                        style={{
-                          left: `${left}px`,
-                          top: `${top}px`,
-                          color: darkenColor(segment.color, 20)
-                        }}
-                      >
-                        {segment.value}%
+                      <div key={segment.id}>
+                        {/* Draw the label */}
+                        <div
+                          className="absolute text-xs font-medium z-10 transform -translate-x-1/2 -translate-y-1/2"
+                          style={{
+                            left: `${labelX}px`,
+                            top: `${labelY}px`,
+                            color: darkenColor(segment.color, 30),
+                            // Adjust text alignment based on position
+                            textAlign: Math.cos(midAngle) < 0 ? 'right' : 'left',
+                          }}
+                        >
+                          {segment.label}
+                          <span 
+                            className="font-bold ml-1"
+                            style={{ color: primary }}
+                          >
+                            {completionPercentage}%
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
@@ -395,19 +483,80 @@ export default function CategoryCard({
               </div>
             </div>
             
+            {/* Subcategory Table */}
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              {/* Table Header */}
+              <div className="grid grid-cols-4 mb-2 text-sm font-medium text-gray-700">
+                <div className="col-span-1">Sub Category</div>
+                <div className="col-span-1 text-center">%Complete</div>
+                <div className="col-span-1 text-center">Current Goal</div>
+                <div className="col-span-1 text-center">Target Goal</div>
+              </div>
+              
+              {/* Table Rows */}
+              {pieData.map((segment) => {
+                // Calculate completion percentage between goal and actual minutes
+                const goalMinutes = hasOriginalData(segment) ? segment.originalData.goalMinutes : 0;
+                const actualMinutes = hasOriginalData(segment) ? segment.originalData.actualMinutes : 0;
+                const completionPercentage = goalMinutes > 0 
+                  ? Math.round((actualMinutes / goalMinutes) * 100) 
+                  : 0;
+                
+                // Convert minutes to hours for display
+                const currentGoalHours = (actualMinutes / 60).toFixed(1);
+                const targetGoalHours = (goalMinutes / 60).toFixed(1);
+                
+                return (
+                  <div 
+                    key={segment.id} 
+                    className="grid grid-cols-4 py-2 text-sm border-b border-gray-100 items-center hover:bg-gray-50"
+                  >
+                    {/* Subcategory Name with Color Dot */}
+                    <div className="col-span-1 flex items-center">
+                      <div 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: segment.color }}
+                      ></div>
+                      <span className="truncate max-w-[100px]">{segment.label || 'Category'}</span>
+                    </div>
+                    
+                    {/* Completion Percentage */}
+                    <div className="col-span-1 text-center font-medium" style={{ color: primary }}>
+                      {completionPercentage}%
+                    </div>
+                    
+                    {/* Current Goal Hours */}
+                    <div className="col-span-1 text-center">
+                      {currentGoalHours}
+                    </div>
+                    
+                    {/* Target Goal Hours */}
+                    <div className="col-span-1 text-center">
+                      {targetGoalHours}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
             {/* Legend row with actual subcategory names */}
             <div className="flex justify-center flex-wrap gap-3 mt-4">
-              {pieData.map((segment) => (
-                <div key={segment.id} className="flex items-center">
-                  <div 
-                    className="w-3 h-3 rounded-full mr-1" 
-                    style={{ backgroundColor: segment.color }}
-                  ></div>
-                  <span className="text-xs sm:text-sm truncate max-w-[100px]">
-                    {segment.label || 'Category'}
-                  </span>
-                </div>
-              ))}
+              {pieData.map((segment) => {
+                return (
+                  <div key={`legend-${segment.id}`} className="flex items-center">
+                    <div 
+                      className="w-3 h-3 rounded-full mr-1" 
+                      style={{ backgroundColor: segment.color }}
+                    ></div>
+                    <span className="text-xs sm:text-sm truncate max-w-[100px]">
+                      {segment.label || 'Category'}
+                    </span>
+                    <span className="text-xs font-medium ml-1" style={{ color: primary }}>
+                      {segment.value}%
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </CardContent>
