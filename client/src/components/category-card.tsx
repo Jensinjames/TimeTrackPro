@@ -405,9 +405,17 @@ export default function CategoryCard({
                           }}
                         >
                           <strong>{datum.label}</strong><br />
-                          Goal: {(goalMinutes / 60).toFixed(1)}h<br />
-                          Actual: {(actualMinutes / 60).toFixed(1)}h<br />
-                          Allocation: {datum.value}%
+                          <span style={{ color: primary, fontWeight: 'bold' }}>
+                            Goal: {(goalMinutes / 60).toFixed(1)}h ({Math.round(goalMinutes)}m)
+                          </span><br />
+                          <span style={{ color: goalMinutes > 0 && actualMinutes >= goalMinutes ? 'green' : 'orange' }}>
+                            Actual: {(actualMinutes / 60).toFixed(1)}h ({Math.round(actualMinutes)}m)
+                          </span><br />
+                          <hr style={{ margin: '4px 0', borderColor: '#eee' }} />
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Allocation: {datum.value}%</span>
+                            <span>Completion: {goalMinutes > 0 ? Math.round((actualMinutes / goalMinutes) * 100) : 0}%</span>
+                          </div>
                         </div>
                       );
                     }}
@@ -457,7 +465,7 @@ export default function CategoryCard({
                     
                     return (
                       <div key={segment.id}>
-                        {/* Draw the label */}
+                        {/* Draw the label with time values */}
                         <div
                           className="absolute text-xs font-medium z-10 transform -translate-x-1/2 -translate-y-1/2"
                           style={{
@@ -466,14 +474,18 @@ export default function CategoryCard({
                             color: darkenColor(segment.color, 30),
                             // Adjust text alignment based on position
                             textAlign: Math.cos(midAngle) < 0 ? 'right' : 'left',
+                            backgroundColor: 'rgba(255,255,255,0.8)',
+                            padding: '2px 4px',
+                            borderRadius: '4px',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                           }}
                         >
                           {segment.label}
                           <span 
-                            className="font-bold ml-1"
+                            className="font-bold ml-1 block"
                             style={{ color: primary }}
                           >
-                            {completionPercentage}%
+                            {completionPercentage}% - {(actualMinutes / 60).toFixed(1)}h / {(goalMinutes / 60).toFixed(1)}h
                           </span>
                         </div>
                       </div>
@@ -525,14 +537,14 @@ export default function CategoryCard({
                       {completionPercentage}%
                     </div>
                     
-                    {/* Current Goal Hours */}
+                    {/* Current Goal Hours (Actual time spent) */}
                     <div className="col-span-1 text-center">
-                      {currentGoalHours}
+                      {currentGoalHours}h ({Math.round(actualMinutes)}m)
                     </div>
                     
                     {/* Target Goal Hours */}
                     <div className="col-span-1 text-center">
-                      {targetGoalHours}
+                      {targetGoalHours}h ({Math.round(goalMinutes)}m)
                     </div>
                   </div>
                 );
