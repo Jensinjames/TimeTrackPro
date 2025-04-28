@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, Clock, BarChart, Calendar } from 'lucide-react';
 import { formatHours, formatPercent, getCategoryIcon, categoryColors } from '@/lib/utils';
+import { generateBalancedColorScheme, lightenColor, darkenColor, getContrastingTextColor } from '@/lib/color-utils';
 import { CategoryWithSubcategories } from '@shared/schema';
 import { ResponsivePie } from '@nivo/pie';
 
@@ -131,18 +132,26 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
     });
   }
   
-  // Function to shade colors programmatically
+  // Function to generate balanced colors for subcategories
   function shadeColor(color: string, percent: number) {
-    const f = parseInt(color.slice(1), 16);
-    const t = percent < 0 ? 0 : 255;
-    const p = percent < 0 ? percent * -1 : percent;
-    const R = f >> 16;
-    const G = (f >> 8) & 0x00FF;
-    const B = f & 0x0000FF;
+    // Ensure the color is valid
+    if (!color || !color.startsWith('#')) {
+      color = '#3B82F6'; // Default to blue if invalid
+    }
     
-    return "#" + (0x1000000 + (Math.round((t - R) * p) + R) * 0x10000 
-      + (Math.round((t - G) * p) + G) * 0x100 
-      + (Math.round((t - B) * p) + B)).toString(16).slice(1);
+    // For first few items, use balanced color scheme
+    if (percent < 0.31) {
+      // Generate balanced colors to ensure good contrast
+      const { primary, secondary, tertiary } = generateBalancedColorScheme(color);
+      
+      if (percent < 0.1) return primary;
+      if (percent < 0.2) return secondary;
+      return tertiary;
+    }
+    
+    // For additional items, use progressive lightening
+    const lightness = 15 + Math.round(percent * 70);
+    return lightenColor(color, lightness);
   }
 
   return (
@@ -167,7 +176,8 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
               className={`h-6 w-6 rounded-full flex items-center justify-center mr-2`}
               style={{ backgroundColor: category.color }}  
             >
-              <i className={`${getCategoryIcon(category.icon)} text-white text-xs`}></i>
+              <i className={`${getCategoryIcon(category.icon)} text-xs`} 
+                style={{ color: getContrastingTextColor(category.color) }}></i>
             </div>
             <h3 className="text-base md:text-lg font-medium truncate">{category.name} Details</h3>
           </div>
@@ -288,8 +298,8 @@ export default function CategoryDetailView({ category, onBack }: CategoryDetailV
                           <div 
                             className="text-xs px-2 py-1 rounded-full whitespace-nowrap"
                             style={{ 
-                              backgroundColor: `${category.color}20`, 
-                              color: category.color 
+                              backgroundColor: lightenColor(category.color, 85), 
+                              color: darkenColor(category.color, 20) 
                             }}
                           >
                             {formatHours(subcategory.goalMinutes / 60)}
