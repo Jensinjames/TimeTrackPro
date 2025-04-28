@@ -296,6 +296,14 @@ export default function DashboardPage() {
     
     const colors = getCategoryColors(category.name);
     
+    // Instead of relying on the calculatedPercentage property which TypeScript doesn't recognize,
+    // calculate percentages directly here
+    const calculatePercentage = (subcategory: any) => {
+      const minutes = subcategory.goalMinutes;
+      const totalMinutes = category.subcategories.reduce((acc, curr) => acc + curr.goalMinutes, 0);
+      return totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0;
+    };
+    
     // Use subcategories with their percentages to create segments
     // If we have too many subcategories, combine the smallest ones into "Other"
     const MAX_SEGMENTS = 3;
@@ -305,7 +313,7 @@ export default function DashboardPage() {
       // Use all subcategories
       segments = category.subcategories.map((sub, idx) => ({
         name: sub.name,
-        value: sub.calculatedPercentage || 0,
+        value: calculatePercentage(sub),
         color: idx === 0 ? colors.primary : (idx === 1 ? colors.secondary : colors.tertiary)
       }));
     } else {
@@ -315,12 +323,12 @@ export default function DashboardPage() {
       
       segments = topSubcategories.map((sub, idx) => ({
         name: sub.name,
-        value: sub.calculatedPercentage || 0,
+        value: calculatePercentage(sub),
         color: idx === 0 ? colors.primary : colors.secondary
       }));
       
       // Add "Other" category
-      const otherPercentage = otherSubcategories.reduce((acc, curr) => acc + (curr.calculatedPercentage || 0), 0);
+      const otherPercentage = otherSubcategories.reduce((acc, curr) => acc + calculatePercentage(curr), 0);
       segments.push({
         name: 'Other',
         value: otherPercentage,
@@ -340,6 +348,13 @@ export default function DashboardPage() {
     
     // Show top 2 subcategories with their percentages
     const topSubcategories = category.subcategories.slice(0, 2);
+    
+    // Reuse the same percentage calculation function
+    const calculatePercentage = (subcategory: any) => {
+      const minutes = subcategory.goalMinutes;
+      const totalMinutes = category.subcategories.reduce((acc, curr) => acc + curr.goalMinutes, 0);
+      return totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0;
+    };
     
     return (
       <Card className="shadow-sm overflow-hidden">
@@ -361,7 +376,7 @@ export default function DashboardPage() {
                   <div className="flex justify-between">
                     <span>{subcat.name}</span>
                     <span className="font-medium">
-                      {subcat.percentage}%
+                      {calculatePercentage(subcat)}%
                     </span>
                   </div>
                 </div>
@@ -398,6 +413,15 @@ export default function DashboardPage() {
     
     const colors = getCategoryColors('Work');
     
+    // Calculate actual hours vs goal hours for chart
+    const currentHours = workCategory.actualHours || 0;
+    const goalHours = workCategory.goalHours || 0;
+    const totalHours = Math.max(currentHours, goalHours);
+    
+    // Calculate percentages for the chart - scaled to 100
+    const currentPercentage = totalHours > 0 ? Math.round((currentHours / totalHours) * 100) : 0;
+    const goalPercentage = totalHours > 0 ? Math.round((goalHours / totalHours) * 100) : 0;
+    
     return (
       <Card className="shadow-sm overflow-hidden">
         <CardContent className="p-5">
@@ -416,13 +440,13 @@ export default function DashboardPage() {
               <div className="mb-3">
                 <div className="flex justify-between">
                   <span>Current Reality</span>
-                  <span className="font-medium">18h</span>
+                  <span className="font-medium">{currentHours}h</span>
                 </div>
               </div>
               <div className="mb-3">
                 <div className="flex justify-between">
                   <span>Goal</span>
-                  <span className="font-medium">{workCategory.goalHours}h</span>
+                  <span className="font-medium">{goalHours}h</span>
                 </div>
               </div>
             </div>
@@ -431,8 +455,8 @@ export default function DashboardPage() {
               {renderDonutChart(
                 workCategory.progress || 0,
                 [
-                  { name: 'Current', value: 60, color: colors.primary },
-                  { name: 'Goal', value: 40, color: colors.secondary },
+                  { name: 'Current', value: currentPercentage, color: colors.primary },
+                  { name: 'Goal', value: goalPercentage, color: colors.secondary },
                 ],
                 170,
                 `${workCategory.progress || 0}%`
