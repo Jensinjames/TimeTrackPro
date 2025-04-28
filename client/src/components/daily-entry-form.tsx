@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertDailyEntrySchema } from "@shared/schema";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { categoryColors, getCategoryIcon, timeOptions } from "@/lib/utils";
+import { getCategoryIcon, timeOptions } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CategoryWithSubcategories } from "@shared/schema";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { generateBalancedColorScheme, getContrastingTextColor } from "@/lib/color-utils";
 
 interface DailyEntryFormProps {
   open: boolean;
@@ -341,143 +342,162 @@ export default function DailyEntryForm({
                     control={form.control}
                     name="sleepHours"
                     render={({ field }) => (
-                      <FormItem className="mb-3">
-                        <FormLabel>Current Plan (hours)</FormLabel>
+                      <FormItem className="space-y-1 mb-3">
+                        <FormLabel className="text-sm font-medium">
+                          Today's Sleep Plan (hours)
+                        </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             min="0"
                             max="24"
                             step="0.5"
-                            placeholder="E.g., 8" 
                             {...field}
-                            value={field.value !== null ? field.value : ''}
+                            value={field.value === null ? '' : field.value}
                             onChange={(e) => {
-                              const value = e.target.value === '' ? null : Number(e.target.value);
-                              field.onChange(value);
+                              const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                              field.onChange(val);
                             }}
+                            className="max-w-[140px]"
                           />
                         </FormControl>
-                        <p className="text-xs text-gray-500 mt-1">Hours you plan to sleep today</p>
+                        <p className="text-xs text-gray-500">
+                          How many hours do you plan to sleep tonight?
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   
-                  {/* PredictedSleepHours - Next Day's Prediction */}
+                  {/* PredictedSleepHours - Next Day Prediction */}
                   <FormField
                     control={form.control}
                     name="predictedSleepHours"
                     render={({ field }) => (
-                      <FormItem className="mb-3">
-                        <FormLabel>Next Day Prediction (hours)</FormLabel>
+                      <FormItem className="space-y-1 mb-3">
+                        <FormLabel className="text-sm font-medium">
+                          Predicted Sleep (hours)
+                        </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             min="0"
                             max="24"
                             step="0.5"
-                            placeholder="E.g., 8" 
                             {...field}
-                            value={field.value !== null ? field.value : ''}
+                            value={field.value === null ? '' : field.value}
                             onChange={(e) => {
-                              const value = e.target.value === '' ? null : Number(e.target.value);
-                              field.onChange(value);
+                              const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                              field.onChange(val);
                             }}
+                            className="max-w-[140px]"
                           />
                         </FormControl>
-                        <p className="text-xs text-gray-500 mt-1">Prediction for tomorrow's sleep hours</p>
+                        <p className="text-xs text-gray-500">
+                          How many hours do you expect to actually sleep?
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Sleep Reporting Section */}
+                <div className="pb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Last Night's Sleep</h4>
+                  
+                  {/* ActualSleepHours - Previous Night's Actual Hours */}
+                  <FormField
+                    control={form.control}
+                    name="actualSleepHours"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1 mb-3">
+                        <FormLabel className="text-sm font-medium">
+                          Actual Sleep (hours)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="24"
+                            step="0.5"
+                            {...field}
+                            value={field.value === null ? '' : field.value}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                              field.onChange(val);
+                            }}
+                            className="max-w-[140px]"
+                          />
+                        </FormControl>
+                        <p className="text-xs text-gray-500">
+                          How many hours did you actually sleep last night?
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   
-                  {/* ActualSleepHours - Previous Day's Actual */}
-                  <FormField
-                    control={form.control}
-                    name="actualSleepHours"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Previous Day Actual (hours)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0"
-                            max="24"
-                            step="0.5"
-                            placeholder="E.g., 7.5" 
-                            {...field}
-                            value={field.value !== null ? field.value : ''}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? null : Number(e.target.value);
-                              field.onChange(value);
-                            }}
-                          />
-                        </FormControl>
-                        <p className="text-xs text-gray-500 mt-1">Actual hours you slept last night</p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                {/* Sleep Quality */}
-                <div className="border-b border-gray-200 pb-4 mb-4">
+                  {/* Sleep Quality Rating */}
                   <FormField
                     control={form.control}
                     name="sleepQuality"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sleep Quality (1-10)</FormLabel>
+                      <FormItem className="space-y-1 mb-2">
+                        <FormLabel className="text-sm font-medium">
+                          Sleep Quality (1-10)
+                        </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0"
+                          <Input
+                            type="number"
+                            min="1"
                             max="10"
                             step="1"
-                            placeholder="Rate from 1-10" 
                             {...field}
-                            value={field.value !== null ? field.value : ''}
+                            value={field.value === null ? '' : field.value}
                             onChange={(e) => {
-                              const value = e.target.value === '' ? null : Number(e.target.value);
-                              field.onChange(value);
+                              const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                              field.onChange(val);
                             }}
+                            className="max-w-[140px]"
                           />
                         </FormControl>
-                        <p className="text-xs text-gray-500 mt-1">How well did you sleep last night?</p>
+                        <p className="text-xs text-gray-500">
+                          How would you rate your sleep quality?
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
                 
-                {/* Notes Section */}
-                <div className="border-b border-gray-200 pb-4 mb-4">
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Day Notes</FormLabel>
-                        <FormControl>
-                          <textarea 
-                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            placeholder="Add notes about your day..." 
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                {/* Notes Field */}
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1 mb-3 border-t border-gray-200 pt-4">
+                      <FormLabel className="text-sm font-medium">
+                        Day Notes
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Any notes about your day..."
+                          className="w-full"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
                 {/* Export Flag */}
                 <FormField
                   control={form.control}
                   name="exportFlag"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 mb-1 mt-3">
                       <FormControl>
                         <Checkbox
                           checked={field.value}
@@ -485,7 +505,7 @@ export default function DailyEntryForm({
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel className="text-sm font-medium">
+                        <FormLabel className="text-sm font-medium cursor-pointer">
                           Include in History Exports
                         </FormLabel>
                         <p className="text-xs text-gray-500">
@@ -508,79 +528,95 @@ export default function DailyEntryForm({
                 
                 if (!hasTimeItems && !hasHabitItems) return null;
                 
+                // Get color scheme for category
+                const categoryColor = category.color && typeof category.color === 'string' && category.color.startsWith('#') 
+                  ? category.color 
+                  : '#16A34A';
+                const { primary, secondary } = generateBalancedColorScheme(categoryColor);
+                const textColor = getContrastingTextColor(primary);
+                
                 return (
-                  <div key={category.id} className="border border-gray-200 rounded-md p-4 transition-all hover:border-gray-300">
-                    <div className="flex items-center mb-3">
-                      <div className={`
-                        h-8 w-8 rounded-full ${categoryColors[category.color]?.light || "bg-gray-100"} 
-                        flex items-center justify-center mr-2
-                      `}>
-                        <i className={`${getCategoryIcon(category.icon)} ${categoryColors[category.color]?.text || "text-gray-500"}`}></i>
+                  <div key={category.id} className="border border-gray-200 rounded-md overflow-hidden transition-all hover:border-gray-300">
+                    {/* Category header with primary color */}
+                    <div 
+                      className="px-4 py-2 font-semibold"
+                      style={{ 
+                        backgroundColor: primary,
+                        color: textColor
+                      }}
+                    >
+                      <div className="flex items-center">
+                        <div className="h-6 w-6 rounded-full bg-white bg-opacity-20 flex items-center justify-center mr-2">
+                          <i className={`${getCategoryIcon(category.icon)} text-sm`}></i>
+                        </div>
+                        <h3>{category.name}</h3>
                       </div>
-                      <h3 className="font-medium">{category.name}</h3>
                     </div>
                     
-                    {/* Time Tracking Fields */}
-                    {hasTimeItems && (
-                      <>
-                        <h4 className="text-xs font-medium mb-2 text-gray-600 pl-10">Time Tracking</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-4 md:pl-10 mb-4">
-                          {category.subcategories
-                            .filter(sub => !sub.goalType || sub.goalType === "time")
-                            .map(sub => (
-                              <div key={sub.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                                <label className="text-sm font-medium truncate">{sub.name}</label>
-                                <Select
-                                  defaultValue={timeRecords[sub.id]?.toString() || "0.25"}
-                                  onValueChange={(value) => handleTimeChange(sub.id, value)}
-                                >
-                                  <SelectTrigger className="w-full sm:w-[110px] md:w-[140px]">
-                                    <SelectValue placeholder="Select time" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {timeOptions.map(option => (
-                                      <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            ))
-                          }
-                        </div>
-                      </>
-                    )}
+                    <div className="p-4">
                     
-                    {/* Habit Fields */}
-                    {hasHabitItems && (
-                      <>
-                        <h4 className="text-xs font-medium mb-2 text-gray-600 pl-10">Habits & Tasks</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-4 md:pl-10">
-                          {category.subcategories
-                            .filter(sub => sub.goalType === "habit" || sub.goalType === "boolean")
-                            .map(sub => (
-                              <div key={sub.id} className="flex items-center space-x-2 py-1">
-                                <Checkbox
-                                  id={`habit-${sub.id}`}
-                                  checked={habitRecords[sub.id] || false}
-                                  onCheckedChange={(checked) => 
-                                    handleHabitChange(sub.id, checked === true)
-                                  }
-                                  className="h-5 w-5" 
-                                />
-                                <label 
-                                  htmlFor={`habit-${sub.id}`}
-                                  className="text-sm font-medium cursor-pointer truncate"
-                                >
-                                  {sub.name}
-                                </label>
-                              </div>
-                            ))
-                          }
-                        </div>
-                      </>
-                    )}
+                      {/* Time Tracking Fields */}
+                      {hasTimeItems && (
+                        <>
+                          <h4 className="text-xs font-medium mb-2 text-gray-600 pl-10">Time Tracking</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-4 md:pl-10 mb-4">
+                            {category.subcategories
+                              .filter(sub => !sub.goalType || sub.goalType === "time")
+                              .map(sub => (
+                                <div key={sub.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                                  <label className="text-sm font-medium truncate">{sub.name}</label>
+                                  <Select
+                                    defaultValue={timeRecords[sub.id]?.toString() || "0.25"}
+                                    onValueChange={(value) => handleTimeChange(sub.id, value)}
+                                  >
+                                    <SelectTrigger className="w-full sm:w-[110px] md:w-[140px]">
+                                      <SelectValue placeholder="Select time" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {timeOptions.map(option => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                          {option.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ))
+                            }
+                          </div>
+                        </>
+                      )}
+                      
+                      {/* Habit Fields */}
+                      {hasHabitItems && (
+                        <>
+                          <h4 className="text-xs font-medium mb-2 text-gray-600 pl-10">Habits & Tasks</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-4 md:pl-10">
+                            {category.subcategories
+                              .filter(sub => sub.goalType === "habit" || sub.goalType === "boolean")
+                              .map(sub => (
+                                <div key={sub.id} className="flex items-center space-x-2 py-1">
+                                  <Checkbox
+                                    id={`habit-${sub.id}`}
+                                    checked={habitRecords[sub.id] || false}
+                                    onCheckedChange={(checked) => 
+                                      handleHabitChange(sub.id, checked === true)
+                                    }
+                                    className="h-5 w-5" 
+                                  />
+                                  <label 
+                                    htmlFor={`habit-${sub.id}`}
+                                    className="text-sm font-medium cursor-pointer truncate"
+                                  >
+                                    {sub.name}
+                                  </label>
+                                </div>
+                              ))
+                            }
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
