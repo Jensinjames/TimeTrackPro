@@ -43,7 +43,9 @@ export default function Dashboard() {
       '/api/dashboard', 
       user?.id, 
       dateRange?.from?.toISOString() || null,
-      dateRange?.to?.toISOString() || date.toISOString().split('T')[0]
+      dateRange?.to?.toISOString() || date.toISOString().split('T')[0],
+      // Add a timestamp to force refresh and bypass cache
+      Date.now()
     ],
     queryFn: async () => {
       // Build URL with date range if available
@@ -57,19 +59,23 @@ export default function Dashboard() {
         params.set('date', date.toISOString());
       }
       
+      // Add cache-busting parameter
+      params.set('_t', Date.now().toString());
+      
       url = `${url}?${params.toString()}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch dashboard data');
       return res.json();
     },
     enabled: !!user,
-    // Refresh data every 5 seconds when the page is visible
-    refetchInterval: 5000,
+    // Refresh data every 3 seconds when the page is visible for more responsive updates
+    refetchInterval: 3000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     // Force always fresh data
     staleTime: 0,
+    gcTime: 0 // Don't cache at all, using gcTime instead of cacheTime which is deprecated
   });
   
   // Effect to clear single-day date when date range is active

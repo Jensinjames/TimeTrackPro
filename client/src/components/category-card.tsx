@@ -102,19 +102,22 @@ export default function CategoryCard({
       return lightenColor(primary, 20 + (idx * 15) % 50);
     };
     
-    // Calculate percentages for each subcategory
+    // Calculate percentages for each subcategory with improved reactivity
     const calculatePercentage = (subcategory: Subcategory) => {
-      // If we already have a calculated percentage, use it
-      if (subcategory.calculatedPercentage) {
-        return subcategory.calculatedPercentage;
-      }
-      
+      // Always recalculate to ensure we have fresh data
       const minutes = subcategory.goalMinutes || 0;
       const totalMinutes = subcategories.reduce(
         (acc, curr) => acc + (curr.goalMinutes || 0), 
         0
       );
-      return totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0;
+      
+      // Calculate the percentage
+      const percentage = totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0;
+      
+      // Update the subcategory object with the calculated percentage for rendering
+      subcategory.calculatedPercentage = percentage;
+      
+      return percentage;
     };
     
     // Use top 3 subcategories or combine into "Other"
