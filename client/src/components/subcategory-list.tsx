@@ -40,12 +40,12 @@ function SubcategoryList({
   const getSubcategoryTypeIcon = (type: string) => {
     switch (type) {
       case 'time':
-        return <TimerIcon className="w-4 h-4 text-blue-500" />;
+        return <TimerIcon className="w-3 h-3 text-blue-500" />;
       case 'habit':
       case 'boolean':
-        return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+        return <CheckCircle2 className="w-3 h-3 text-green-500" />;
       default:
-        return null;
+        return <AlertCircle className="w-3 h-3 text-purple-500" />;
     }
   };
   
@@ -156,7 +156,9 @@ function SubcategoryList({
             data-parent-category-id={categoryId}
           >
             <div className="flex items-center gap-2">
-              {getSubcategoryTypeIcon(subcategory.goalType)}
+              <div className="h-5 w-5 rounded-full bg-gray-100 flex items-center justify-center">
+                {getSubcategoryTypeIcon(subcategory.goalType)}
+              </div>
               <span className="font-medium">{subcategory.name}</span>
               <span className="text-xs text-gray-500 font-mono">(ID: {subcategory.id})</span>
             </div>
