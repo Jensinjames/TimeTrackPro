@@ -316,7 +316,10 @@ export default function DailyEntryForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={isMobile ? "w-full max-w-full h-[95vh] max-h-full overflow-y-auto pb-24" : "w-[95vw] max-w-[650px] max-h-[85vh] overflow-y-auto"}>
+      <DialogContent 
+        className={isMobile ? "w-full max-w-full h-[95vh] max-h-full overflow-y-auto pb-24" : "w-[95vw] max-w-[650px] max-h-[85vh] overflow-y-auto"}
+        description="Form to enter or edit daily time tracking data, including sleep metrics, time allocation, and habit completion."
+      >
         <DialogHeader className="pb-2">
           <DialogTitle className="text-xl sm:text-2xl">{isEditMode ? "Edit" : "Add"} Daily Entry</DialogTitle>
           <p className="text-sm text-gray-500 mt-1">
