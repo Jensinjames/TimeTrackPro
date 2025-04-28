@@ -7,7 +7,7 @@
  * 3. Sets default values for new columns
  */
 
-const { pool } = require('./server/db');
+import { pool } from './server/db';
 
 async function migrateDatabase() {
   const client = await pool.connect();
