@@ -30,6 +30,11 @@ interface DailyEntryFormProps {
 // Extended schema with custom validation
 const dailyEntryFormSchema = insertDailyEntrySchema.extend({
   sleepHours: z.coerce.number().min(0).max(24).nullable(),
+  actualSleepHours: z.coerce.number().min(0).max(24).nullable(),
+  predictedSleepHours: z.coerce.number().min(0).max(24).nullable(),
+  sleepQuality: z.coerce.number().min(0).max(10).nullable(),
+  notes: z.string().optional(),
+  exportFlag: z.boolean().optional(),
 });
 
 type DailyEntryFormValues = z.infer<typeof dailyEntryFormSchema>;
@@ -70,6 +75,11 @@ export default function DailyEntryForm({
       userId: user?.id,
       date: selectedDate,
       sleepHours: 8,
+      actualSleepHours: null,
+      predictedSleepHours: 8,
+      sleepQuality: 7,
+      notes: "",
+      exportFlag: false,
       dailyScore: null,
       motivationLevel: null,
       healthBalance: null,
@@ -320,29 +330,168 @@ export default function DailyEntryForm({
             <div className="space-y-6">
               {/* Metrics Section at Top */}
               <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <h3 className="text-sm font-medium mb-3 text-gray-700">Daily Metrics</h3>
+                <h3 className="text-sm font-medium mb-3 text-gray-700">Sleep & Health Metrics</h3>
+                
+                {/* Sleep Planning Section */}
+                <div className="border-b border-gray-200 pb-4 mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Sleep Planning</h4>
+                  
+                  {/* SleepHours - Current Day's Planned Hours */}
+                  <FormField
+                    control={form.control}
+                    name="sleepHours"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel>Current Plan (hours)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            max="24"
+                            step="0.5"
+                            placeholder="E.g., 8" 
+                            {...field}
+                            value={field.value !== null ? field.value : ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : Number(e.target.value);
+                              field.onChange(value);
+                            }}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-gray-500 mt-1">Hours you plan to sleep today</p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* PredictedSleepHours - Next Day's Prediction */}
+                  <FormField
+                    control={form.control}
+                    name="predictedSleepHours"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel>Next Day Prediction (hours)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            max="24"
+                            step="0.5"
+                            placeholder="E.g., 8" 
+                            {...field}
+                            value={field.value !== null ? field.value : ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : Number(e.target.value);
+                              field.onChange(value);
+                            }}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-gray-500 mt-1">Prediction for tomorrow's sleep hours</p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* ActualSleepHours - Previous Day's Actual */}
+                  <FormField
+                    control={form.control}
+                    name="actualSleepHours"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Previous Day Actual (hours)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            max="24"
+                            step="0.5"
+                            placeholder="E.g., 7.5" 
+                            {...field}
+                            value={field.value !== null ? field.value : ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : Number(e.target.value);
+                              field.onChange(value);
+                            }}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-gray-500 mt-1">Actual hours you slept last night</p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Sleep Quality */}
+                <div className="border-b border-gray-200 pb-4 mb-4">
+                  <FormField
+                    control={form.control}
+                    name="sleepQuality"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sleep Quality (1-10)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            max="10"
+                            step="1"
+                            placeholder="Rate from 1-10" 
+                            {...field}
+                            value={field.value !== null ? field.value : ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : Number(e.target.value);
+                              field.onChange(value);
+                            }}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-gray-500 mt-1">How well did you sleep last night?</p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Notes Section */}
+                <div className="border-b border-gray-200 pb-4 mb-4">
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Day Notes</FormLabel>
+                        <FormControl>
+                          <textarea 
+                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            placeholder="Add notes about your day..." 
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Export Flag */}
                 <FormField
                   control={form.control}
-                  name="sleepHours"
+                  name="exportFlag"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sleep Duration (hours)</FormLabel>
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          max="24"
-                          step="0.5"
-                          placeholder="E.g., 8" 
-                          {...field}
-                          value={field.value !== null ? field.value : ''}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? null : Number(e.target.value);
-                            field.onChange(value);
-                          }}
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-medium">
+                          Include in History Exports
+                        </FormLabel>
+                        <p className="text-xs text-gray-500">
+                          Flag this entry for inclusion in history exports
+                        </p>
+                      </div>
                     </FormItem>
                   )}
                 />

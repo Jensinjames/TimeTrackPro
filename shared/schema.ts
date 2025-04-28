@@ -78,10 +78,15 @@ export const dailyEntries = pgTable("daily_entries", {
   userId: integer("user_id").notNull(),
   date: timestamp("date").notNull(),
   sleepHours: real("sleep_hours").default(0),
+  actualSleepHours: real("actual_sleep_hours").default(0), // Previous day's actual sleep
+  predictedSleepHours: real("predicted_sleep_hours").default(0), // Next day prediction
+  sleepQuality: real("sleep_quality").default(0), // 1-10 scale
   dailyScore: real("daily_score").default(0),
   motivationLevel: real("motivation_level").default(0),
   healthBalance: real("health_balance").default(0),
   unaccountedMinutes: integer("unaccounted_minutes").default(0),
+  exportFlag: boolean("export_flag").default(false), // Flag for entry to be included in exports
+  notes: text("notes").default(""), // Notes about the day
 });
 
 export const insertDailyEntrySchema = createInsertSchema(dailyEntries).omit({
