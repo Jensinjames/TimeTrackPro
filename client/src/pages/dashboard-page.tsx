@@ -33,7 +33,7 @@ const CATEGORY_COLORS = {
     icon: <Check className="text-white w-5 h-5" />
   },
   'Fun': {
-    primary: '#89F18C',  // Light Green
+    primary: '#89F18C',  // Light Green as shown in settings screenshot
     secondary: '#A5F5A7',
     tertiary: '#C4F9C5',
     icon: <Check className="text-white w-5 h-5" />
@@ -56,6 +56,37 @@ const CATEGORY_COLORS = {
     tertiary: '#F9A8D4',
     icon: <Heart className="text-white w-5 h-5" />
   }
+};
+
+// Helper to get actual color from DB value
+const getColorFromDBValue = (colorValue: string): {primary: string, secondary: string, tertiary: string, icon: JSX.Element} => {
+  // If the color is a direct match to one of our category names
+  if (colorValue in CATEGORY_COLORS) {
+    return CATEGORY_COLORS[colorValue as keyof typeof CATEGORY_COLORS];
+  }
+  
+  // If the color is a hex code, try to match or create a gradient
+  if (colorValue.startsWith('#')) {
+    // Look for exact matches first
+    const matchingCategory = Object.entries(CATEGORY_COLORS).find(([_, values]) => 
+      values.primary.toLowerCase() === colorValue.toLowerCase()
+    );
+    
+    if (matchingCategory) {
+      return matchingCategory[1];
+    }
+    
+    // If no match, create a generic gradient based on the hex
+    return {
+      primary: colorValue,
+      secondary: colorValue, // In a real app, would calculate slightly lighter
+      tertiary: colorValue,  // In a real app, would calculate even lighter
+      icon: <Check className="text-white w-5 h-5" />
+    };
+  }
+  
+  // Default fallback
+  return CATEGORY_COLORS['Faith'];
 };
 
 export default function DashboardPage() {
@@ -187,12 +218,13 @@ export default function DashboardPage() {
       
       return {
         ...sub,
-        percentage
+        calculatedPercentage: percentage
       };
     });
     
     // Sort by percentage (descending)
-    const sortedSubcategories = [...subcategories].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+    const sortedSubcategories = [...subcategories].sort((a, b) => 
+      (b.calculatedPercentage || 0) - (a.calculatedPercentage || 0));
     
     return {
       ...category,
@@ -273,7 +305,7 @@ export default function DashboardPage() {
       // Use all subcategories
       segments = category.subcategories.map((sub, idx) => ({
         name: sub.name,
-        value: sub.percentage || 0,
+        value: sub.calculatedPercentage || 0,
         color: idx === 0 ? colors.primary : (idx === 1 ? colors.secondary : colors.tertiary)
       }));
     } else {
@@ -283,12 +315,12 @@ export default function DashboardPage() {
       
       segments = topSubcategories.map((sub, idx) => ({
         name: sub.name,
-        value: sub.percentage || 0,
+        value: sub.calculatedPercentage || 0,
         color: idx === 0 ? colors.primary : colors.secondary
       }));
       
       // Add "Other" category
-      const otherPercentage = otherSubcategories.reduce((acc, curr) => acc + (curr.percentage || 0), 0);
+      const otherPercentage = otherSubcategories.reduce((acc, curr) => acc + (curr.calculatedPercentage || 0), 0);
       segments.push({
         name: 'Other',
         value: otherPercentage,
