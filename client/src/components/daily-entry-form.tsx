@@ -345,11 +345,15 @@ export default function DailyEntryForm({
                     name="sleepHours"
                     render={({ field }) => (
                       <FormItem className="space-y-1 mb-3">
-                        <FormLabel className="text-sm font-medium">
+                        <FormLabel 
+                          htmlFor="sleepHours"
+                          className="text-sm font-medium"
+                        >
                           Today's Sleep Plan (hours)
                         </FormLabel>
                         <FormControl>
                           <Input
+                            id="sleepHours"
                             type="number"
                             min="0"
                             max="24"
@@ -566,12 +570,21 @@ export default function DailyEntryForm({
                               .filter(sub => !sub.goalType || sub.goalType === "time")
                               .map(sub => (
                                 <div key={sub.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                                  <label className="text-sm font-medium truncate">{sub.name}</label>
+                                  <label 
+                                    htmlFor={`time-${category.id}-${sub.id}`} 
+                                    className="text-sm font-medium truncate"
+                                  >
+                                    {sub.name}
+                                  </label>
                                   <Select
                                     defaultValue={timeRecords[sub.id]?.toString() || "0.25"}
                                     onValueChange={(value) => handleTimeChange(sub.id, value)}
                                   >
-                                    <SelectTrigger className="w-full sm:w-[110px] md:w-[140px]">
+                                    <SelectTrigger 
+                                      id={`time-${category.id}-${sub.id}`}
+                                      name={`time-${category.id}-${sub.id}`}
+                                      className="w-full sm:w-[110px] md:w-[140px]"
+                                    >
                                       <SelectValue placeholder="Select time" />
                                     </SelectTrigger>
                                     <SelectContent>
