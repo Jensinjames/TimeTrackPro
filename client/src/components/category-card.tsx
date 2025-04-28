@@ -346,9 +346,12 @@ export default function CategoryCard({
         <CardContent className="p-0 overflow-hidden">
           {/* Category header with primary color background */}
           <div 
-            className="p-3 font-bold text-white uppercase text-lg" 
+            className="p-3 font-bold text-white uppercase text-lg flex items-center" 
             style={{ backgroundColor: primary }}
           >
+            <div className="h-7 w-7 rounded-full bg-white bg-opacity-25 flex items-center justify-center mr-2">
+              <i className={`${iconClass} text-sm`}></i>
+            </div>
             {name}
           </div>
           
@@ -592,14 +595,16 @@ export default function CategoryCard({
                     key={segment.id} 
                     className="grid grid-cols-4 py-2 text-sm border-b border-gray-100 items-center hover:bg-gray-50"
                   >
-                    {/* Subcategory Name with Color Dot */}
+                    {/* Subcategory Name with Icon */}
                     <div className="col-span-1 flex items-center">
                       <div 
-                        className="w-3 h-3 rounded-full mr-2" 
-                        style={{ backgroundColor: segment.color }}
+                        className="w-4 h-4 rounded-full mr-2 flex items-center justify-center" 
+                        style={{ backgroundColor: segment.color, color: getContrastingTextColor(segment.color) }}
                         role="presentation"
                         aria-hidden="true"
-                      ></div>
+                      >
+                        <i className={`${iconClass} text-xs`}></i>
+                      </div>
                       <span className="truncate max-w-[100px]" title={segment.label || 'Category'}>
                         {segment.label || 'Category'}
                       </span>
@@ -639,11 +644,13 @@ export default function CategoryCard({
                     aria-label={`${segment.label}: ${segment.value}% allocation, ${(actualMinutes / 60).toFixed(1)} hours actual of ${(goalMinutes / 60).toFixed(1)} hours goal`}
                   >
                     <div 
-                      className="w-3 h-3 rounded-full mr-1" 
-                      style={{ backgroundColor: segment.color }}
+                      className="w-4 h-4 rounded-full mr-1 flex items-center justify-center" 
+                      style={{ backgroundColor: segment.color, color: getContrastingTextColor(segment.color) }}
                       role="presentation"
                       aria-hidden="true"
-                    ></div>
+                    >
+                      <i className={`${iconClass} text-xs`}></i>
+                    </div>
                     <span 
                       className="text-xs sm:text-sm truncate max-w-[100px]"
                       title={`${segment.label}: ${(actualMinutes / 60).toFixed(1)}h / ${(goalMinutes / 60).toFixed(1)}h`}
