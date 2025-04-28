@@ -669,9 +669,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (categoryData) {
           categoryData.value += minutes;
           
-          // Add or update subcategory data
+          // Add or update subcategory data - use ID for reliable matching
           const existingSubIndex = categoryData.subcategories.findIndex(
-            (sub: any) => sub.name === subcategory.name
+            (sub: any) => sub.id === subcategory.id
           );
           
           if (existingSubIndex >= 0) {
