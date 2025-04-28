@@ -59,15 +59,18 @@ const CATEGORY_COLORS = {
 };
 
 // Helper to get actual color from DB value
+// Import color utilities
+import { generateBalancedColorScheme, getContrastingTextColor } from "@/lib/color-utils";
+
 const getColorFromDBValue = (colorValue: string): {primary: string, secondary: string, tertiary: string, icon: JSX.Element} => {
   // If the color is a direct match to one of our category names
   if (colorValue in CATEGORY_COLORS) {
     return CATEGORY_COLORS[colorValue as keyof typeof CATEGORY_COLORS];
   }
   
-  // If the color is a hex code, try to match or create a gradient
+  // If the color is a hex code, generate a balanced color scheme
   if (colorValue.startsWith('#')) {
-    // Look for exact matches first
+    // Look for exact matches to our predefined colors first
     const matchingCategory = Object.entries(CATEGORY_COLORS).find(([_, values]) => 
       values.primary.toLowerCase() === colorValue.toLowerCase()
     );
@@ -76,12 +79,22 @@ const getColorFromDBValue = (colorValue: string): {primary: string, secondary: s
       return matchingCategory[1];
     }
     
-    // If no match, create a generic gradient based on the hex
+    // Generate a balanced color scheme from the hex value
+    const { primary, secondary, tertiary } = generateBalancedColorScheme(colorValue);
+    
+    // Determine if we should use black or white for the icon based on contrast
+    const textColor = getContrastingTextColor(primary);
+    const iconColor = textColor === "#FFFFFF" ? "text-white" : "text-black";
+    
+    // Choose an appropriate icon based on the color
+    // We could make this more sophisticated by mapping to category names if needed
+    const icon = <Check className={`${iconColor} w-5 h-5`} />;
+    
     return {
-      primary: colorValue,
-      secondary: colorValue, // In a real app, would calculate slightly lighter
-      tertiary: colorValue,  // In a real app, would calculate even lighter
-      icon: <Check className="text-white w-5 h-5" />
+      primary,
+      secondary,
+      tertiary,
+      icon
     };
   }
   
@@ -328,7 +341,7 @@ export default function DashboardPage() {
       }));
       
       // Add "Other" category
-      const otherPercentage = otherSubcategories.reduce((acc, curr) => acc + calculatePercentage(curr), 0);
+      const otherPercentage = otherSubcategories.reduce((acc: number, curr: any) => acc + calculatePercentage(curr), 0);
       segments.push({
         name: 'Other',
         value: otherPercentage,
@@ -351,8 +364,8 @@ export default function DashboardPage() {
     
     // Reuse the same percentage calculation function
     const calculatePercentage = (subcategory: any) => {
-      const minutes = subcategory.goalMinutes;
-      const totalMinutes = category.subcategories.reduce((acc, curr) => acc + curr.goalMinutes, 0);
+      const minutes = subcategory.goalMinutes || 0;
+      const totalMinutes = category.subcategories.reduce((acc: number, curr: any) => acc + (curr.goalMinutes || 0), 0);
       return totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0;
     };
     

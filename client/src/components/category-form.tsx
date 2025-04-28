@@ -425,6 +425,28 @@ function CategoryForm({
           ></div>
           <div className="text-xs font-mono">{category.color}</div>
         </div>
+        {category.color && (
+          <div className="mt-2">
+            <div className="text-xs text-gray-500 mb-1">Color Palette Preview:</div>
+            <div className="flex space-x-2">
+              <div 
+                className="h-6 w-10 rounded border border-gray-200" 
+                style={{ backgroundColor: category.color }}
+                title="Primary"
+              ></div>
+              <div 
+                className="h-6 w-10 rounded border border-gray-200" 
+                style={{ backgroundColor: lightenColor(category.color, 15) }}
+                title="Secondary"
+              ></div>
+              <div 
+                className="h-6 w-10 rounded border border-gray-200" 
+                style={{ backgroundColor: lightenColor(category.color, 30) }}
+                title="Tertiary"
+              ></div>
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="flex justify-between pt-4 border-t border-gray-200 mt-4">
