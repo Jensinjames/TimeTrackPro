@@ -103,21 +103,22 @@ export default function CategoryCard({
     };
     
     // Calculate percentages for each subcategory with improved reactivity
-    const calculatePercentage = (subcategory: Subcategory) => {
-      // Always recalculate to ensure we have fresh data
-      const minutes = subcategory.goalMinutes || 0;
+    const calculatePercentage = (subcategory: Subcategory, useActual = false) => {
+      // Switch between goal-based and actual time-based percentages
+      const minutes = useActual ? (subcategory.actualMinutes || 0) : (subcategory.goalMinutes || 0);
       const totalMinutes = subcategories.reduce(
-        (acc, curr) => acc + (curr.goalMinutes || 0), 
+        (acc, curr) => acc + (useActual ? (curr.actualMinutes || 0) : (curr.goalMinutes || 0)), 
         0
       );
       
-      // Calculate the percentage
+      // Calculate the percentage (ensure we don't divide by zero)
       const percentage = totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0;
       
       // Update the subcategory object with the calculated percentage for rendering
       subcategory.calculatedPercentage = percentage;
       
-      return percentage;
+      // Make sure we never return 0 for valid subcategories to maintain visibility
+      return percentage > 0 ? percentage : (minutes > 0 ? 1 : 0);
     };
     
     // Use top 3 subcategories or combine into "Other"
@@ -129,7 +130,7 @@ export default function CategoryCard({
       segments = subcategories.map((sub, idx) => ({
         id: `category-${sub.id}`,
         label: sub.name,
-        value: calculatePercentage(sub),
+        value: calculatePercentage(sub, true), // Use actual minutes for chart segments
         color: getColorForIndex(idx, subcategories.length),
         originalData: {
           goalMinutes: sub.goalMinutes,
@@ -152,7 +153,7 @@ export default function CategoryCard({
       segments = topSubcategories.map((sub, idx) => ({
         id: `category-${sub.id}`,
         label: sub.name,
-        value: calculatePercentage(sub),
+        value: calculatePercentage(sub, true), // Use actual minutes for chart segments
         color: getColorForIndex(idx, MAX_SEGMENTS),
         originalData: {
           goalMinutes: sub.goalMinutes,
@@ -162,7 +163,7 @@ export default function CategoryCard({
       
       // Add "Other" category
       const otherPercentage = otherSubcategories.reduce(
-        (acc, curr) => acc + calculatePercentage(curr), 
+        (acc, curr) => acc + calculatePercentage(curr, true), // Use actual minutes for chart segments
         0
       );
       
@@ -186,12 +187,37 @@ export default function CategoryCard({
     
     // Ensure segments add up to 100%
     const totalPercentage = segments.reduce((acc, segment) => acc + segment.value, 0);
-    if (totalPercentage !== 100 && totalPercentage > 0) {
-      // Normalize to 100%
-      segments = segments.map(segment => ({
-        ...segment,
-        value: Math.round((segment.value / totalPercentage) * 100)
-      }));
+    
+    // Only normalize if we have valid data (greater than 0)
+    if (totalPercentage > 0) {
+      // Make sure segments add up to exactly 100%
+      if (totalPercentage !== 100) {
+        // First normalize all segments proportionally
+        let normalizedSegments = segments.map(segment => ({
+          ...segment,
+          value: Math.round((segment.value / totalPercentage) * 100)
+        }));
+        
+        // Calculate the new total after rounding
+        const newTotal = normalizedSegments.reduce((acc, segment) => acc + segment.value, 0);
+        
+        // Adjust the largest segment to make total exactly 100%
+        if (newTotal !== 100) {
+          const diff = 100 - newTotal;
+          const largestSegmentIndex = normalizedSegments
+            .map((segment, index) => ({ value: segment.value, index }))
+            .sort((a, b) => b.value - a.value)[0].index;
+          
+          normalizedSegments[largestSegmentIndex].value += diff;
+        }
+        
+        segments = normalizedSegments;
+      }
+    } else {
+      // If no valid data, create a placeholder segment
+      segments = [
+        { id: 'no-data', label: 'No Data', value: 100, color: '#cccccc' }
+      ];
     }
     
     return segments;
